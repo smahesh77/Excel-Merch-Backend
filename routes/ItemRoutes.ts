@@ -6,7 +6,6 @@ import { adminValidateToken } from '../middleware/authMiddleware';
 import { userValidateToken } from '../middleware/userAuth';
 import { Storage } from '@google-cloud/storage';
 import multer from 'multer';
-import formidable from 'express-formidable';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -58,31 +57,29 @@ const gcs = new Storage({
 
 const bucket = gcs.bucket('excelmec-merch-staging-1353d5xs42d');
 
-router.post('/',upload.single('image'),formidable(), async (req: Request<{}, {}, ItemRequest& { image: Express.Multer.File }>, res: Response, next: NextFunction) => {
+router.post('/',upload.array('images', 20), async (req: Request<{}, {}, ItemRequest& { image: Express.Multer.File }>, res: Response, next: NextFunction) => {
+  
   const { name, description, price, stockCount, sizeOptions, colorOptions, mediaObject } = JSON.parse(req.body.data);
-  const image = req.file;
+  const images = req.files as Express.Multer.File[];
+
   try {
-    if (!image) {
+
+    
+
+    if (!images) {
       return res.status(400).json({ error: 'Image file is required' }); 
     }
 
-    // Upload the image to Google Cloud Storage 
-    const fileName = `${Date.now()}-${image.originalname}`;
-    const file = bucket.file(fileName);
+    const mediaObjects = images.map((image, index) => ({ 
+      type: 'image',
+      url: `https://storage.googleapis.com/${encodeURIComponent(bucket.name)}/${encodeURIComponent(image.originalname)}`,
+      colorValue: 'default', // You may need to adjust this based on your requirements
+      viewOrdering: index + 1, // You may need to adjust this based on your requirements
+    }));
 
-    const stream = file.createWriteStream({
-      metadata: {
-        contentType: image.mimetype,
-      },
-    });
 
-    stream.on('error', (err) => {
-      next(err);
-    });
 
-    stream.on('finish', async () => {
-      // Generate the GCS URL
-      const gcsUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    
 
       // Create the new item with the GCS URL
       const newItem = await prisma.item.create({
@@ -91,12 +88,7 @@ router.post('/',upload.single('image'),formidable(), async (req: Request<{}, {},
           description,
           price,
           mediaObjects: {
-            create: {
-              type: 'image',
-              url: gcsUrl,
-              colorValue: 'default', // You may need to adjust this based on your requirements
-              viewOrdering: 1, // You may need to adjust this based on your requirements
-            },
+            create: mediaObjects,
           },
           stockCount,
           sizeOptions: { set: sizeOptions },
@@ -105,10 +97,9 @@ router.post('/',upload.single('image'),formidable(), async (req: Request<{}, {},
       });
 
       res.json(newItem);
-    });
 
-    // Write the image buffer to the Google Cloud Storage stream
-    stream.end(image.buffer);
+
+
   } catch (err) {
     next(err);
   }

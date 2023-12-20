@@ -28,9 +28,10 @@ app.use((err: Error, req: express.Request, res: express.Response, next: () => vo
   if (err.name === 'UnauthorizedError') {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  next();
+  next(); 
 });
 
 app.listen(4000, () => {
   console.log(`Listening on port ${4000}`);
 });
+   
