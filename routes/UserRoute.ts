@@ -151,12 +151,12 @@ router.put('/', async (req: Request<{ userId: string }, {}, UpdateUserRequest>, 
   } catch (err) {
     next(err);
   }
-});
+}); 
 
 // get cart items
 router.get('/cart',userValidateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Retrieve user and associated cart with items
+    // Retrieve user and associated cart with items 
     const userWithCart = await prisma.user.findUnique({
       where: { email:req.decodedToken?.email },
       include:{cart: true}
