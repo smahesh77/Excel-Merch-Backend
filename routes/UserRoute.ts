@@ -3,9 +3,11 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { sign } from 'jsonwebtoken';
-import { UserData, AddressData, SignupRequest, LoginRequest, UpdateUserRequest } from '../types';
+import { UserData, AddressData, SignupRequest, LoginRequest, UpdateUserRequest, DecodedToken } from '../types';
 import dotenv from 'dotenv';
-import { userValidateToken } from '../middleware/userAuthMiddleware';
+import { adminValidateToken } from '../middleware/authMiddleware';
+import { log } from 'console';
+import { userValidateToken } from '../middleware/userAuth';
 
 dotenv.config();
 
@@ -17,22 +19,35 @@ router.post('/signup', async (req: Request<{}, {}, SignupRequest>, res: Response
   const { name, email, phoneNumber, password, city, zipcode, state, area } = req.body;
 
   try {
+
+
+    res.json({
+
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/login',userValidateToken, async (req: Request<{}, {}, LoginRequest>, res: Response, next: NextFunction) => {
+  const { phoneNumber, city, zipcode, state, area } = req.body;
+
+  try {
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: req.decodedToken?.email },
     });
 
     if (existingUser) {
-      return res.status(409).json({ error: 'User already exists' });
+      return res.status(409).json(existingUser);
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+    
+    
     const newUser = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: req.decodedToken?.name || 'null',
+        email:req.decodedToken?.email || 'null',
         phoneNumber,
-        password: hashedPassword,
         address: {
           create: {
             city: city || 'Default City',
@@ -41,71 +56,29 @@ router.post('/signup', async (req: Request<{}, {}, SignupRequest>, res: Response
             state: state || 'Default State',
           },
         },
-        // Create an empty cart for the new user
         cart: {
           create: {
-            items: {}
+            items: {},
           },
         },
       },
     });
-
-    const accessToken = sign(
-      { email: newUser.email, id: newUser.id, name: newUser.name },
-      `${process.env.SECRET_KEY_USER}`
-    );
+    
 
     res.json({
-      token: accessToken,
-      name: newUser.name,
-      id: newUser.id,
-      email: newUser.email,
+     newUser
     });
   } catch (err) {
     next(err);
   }
 });
 
-router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response, next: NextFunction) => {
-  const { email, password } = req.body;
+router.get('/profile',userValidateToken, async (req: Request<{ userId: string }>, res: Response, next: NextFunction) => {
+  
 
   try {
     const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const match = await bcrypt.compare(password, user.password);
-
-    if (!match) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const accessToken = sign(
-      { email: user.email, id: user.id, name: user.name },
-      `${process.env.SECRET_KEY_USER}`
-    );
-
-    res.json({
-      token: accessToken,
-      name: user.name,
-      id: user.id,
-      email: user.email,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get('/profile/:userId',userValidateToken, async (req: Request<{ userId: string }>, res: Response, next: NextFunction) => {
-  const userId = parseInt(req.params.userId, 10);
-
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { email: req.decodedToken?.email },
       include: { address: true, cart: {include:{CartItem:true}}, orders:true},
     });
 
@@ -118,13 +91,13 @@ router.get('/profile/:userId',userValidateToken, async (req: Request<{ userId: s
     //   include: {CartItem: true}
     // })
 
-    res.json(user);
+    res.json(user.cart);
   } catch (err) {
     next(err);
   }
 });
 
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/',userValidateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await prisma.user.findMany({
        include: { address: true , cart: true },
@@ -151,16 +124,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 //     }
 //   });
 
-router.put('/:userId', async (req: Request<{ userId: string }, {}, UpdateUserRequest>, res: Response, next: NextFunction) => {
-  const userId = parseInt(req.params.userId, 10);
-  const { name, email, phoneNumber, city, zipcode, state } = req.body;
+router.put('/', async (req: Request<{ userId: string }, {}, UpdateUserRequest>, res: Response, next: NextFunction) => {
+  const { phoneNumber, city, zipcode, state } = req.body;
 
   try {
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { email:req.decodedToken?.email },
       data: {
-        name,
-        email,
         phoneNumber,
         address: {
           update: {
@@ -184,12 +154,11 @@ router.put('/:userId', async (req: Request<{ userId: string }, {}, UpdateUserReq
 });
 
 // get cart items
-router.get('/getcartitems/:userId', async (req: Request, res: Response, next: NextFunction) => {
-  const userId = parseInt(req.params.userId, 10);
+router.get('/cart',userValidateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Retrieve user and associated cart with items
     const userWithCart = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { email:req.decodedToken?.email },
       include:{cart: true}
       
     });

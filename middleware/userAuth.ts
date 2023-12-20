@@ -7,7 +7,7 @@ dotenv.config();
 
   
 
-const adminValidateToken = (req: Request, res: Response, next: NextFunction): void => {
+const userValidateToken = (req: Request, res: Response, next: NextFunction): void => {
     const jwtSecret = process.env.SECRET_KEY || "";
 
     const authorizationHeader = req.headers.authorization;
@@ -29,8 +29,8 @@ const adminValidateToken = (req: Request, res: Response, next: NextFunction): vo
     try {
         const decodedToken = jwt.verify(token, jwtSecret) as DecodedToken;
 
-        if (!decodedToken.role.includes('Admin')) {
-            res.status(403).json({ error: 'Unauthorized: Only Admins can access this' });
+        if (!decodedToken.role.includes('User')) {
+            res.status(403).json({ error: 'Unauthorized: Only Admins can change logostatus' });
             return;
         }
 
@@ -43,4 +43,4 @@ const adminValidateToken = (req: Request, res: Response, next: NextFunction): vo
     }
 }
 
-export { adminValidateToken };
+export { userValidateToken };

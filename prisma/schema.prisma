@@ -18,7 +18,6 @@ model User {
   name        String
   email       String   @unique
   phoneNumber String?
-  password    String
   address     Address? // Reference to the Address model
   cart        Cart? // Reference to the Cart model
   orders      Order[] // Reference to the Order model

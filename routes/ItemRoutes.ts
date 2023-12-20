@@ -2,6 +2,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import {  ItemResponse, CartResponse, ItemInCartResponse } from '../types';
+import { adminValidateToken } from '../middleware/authMiddleware';
+import { userValidateToken } from '../middleware/userAuth';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -32,7 +34,7 @@ interface ItemRequest {
   mediaObject: mediaObject;
 }
 
-router.post('/add', async (req: Request<{}, {}, ItemRequest>, res: Response, next: NextFunction) => {
+router.post('/', async (req: Request<{}, {}, ItemRequest>, res: Response, next: NextFunction) => {
   const { name, description, price, stockCount, sizeOptions, colorOptions, mediaObject } = req.body;
 
   try {
@@ -100,7 +102,7 @@ router.get('/:itemId', async (req: Request, res: Response, next: NextFunction) =
   }
 });
 
-router.patch('/:itemId', async (req: Request<{ itemId: string }, {}, ItemRequest>, res: Response, next: NextFunction) => {
+router.patch('/:itemId',adminValidateToken, async (req: Request<{ itemId: string }, {}, ItemRequest>, res: Response, next: NextFunction) => {
   const itemId = parseInt(req.params.itemId, 10);
   const { name, description, price, stockCount, sizeOptions, colorOptions } = req.body;
 
@@ -123,7 +125,7 @@ router.patch('/:itemId', async (req: Request<{ itemId: string }, {}, ItemRequest
   }
 });
 
-router.put('/:itemId', async (req: Request<{ itemId: string }, {}, ItemRequest>, res: Response, next: NextFunction) => {
+router.put('/:itemId',adminValidateToken, async (req: Request<{ itemId: string }, {}, ItemRequest>, res: Response, next: NextFunction) => {
   const itemId = parseInt(req.params.itemId, 10);
   const { name, description, price, stockCount, sizeOptions, colorOptions } = req.body;
 
@@ -146,7 +148,7 @@ router.put('/:itemId', async (req: Request<{ itemId: string }, {}, ItemRequest>,
   }
 });
 
-router.delete('/:itemId', async (req: Request<{ itemId: string }>, res: Response, next: NextFunction) => {
+router.delete('/:itemId',adminValidateToken, async (req: Request<{ itemId: string }>, res: Response, next: NextFunction) => {
   const itemId = parseInt(req.params.itemId, 10);
 
   try {
@@ -170,13 +172,13 @@ interface AddToCartRequest {
   size: string;
 }
 
-router.post('/addtocart', async (req: Request, res: Response, next: NextFunction) => {
-  const { itemId, userId, quantity } = req.body;
+router.post('/addtocart',userValidateToken, async (req: Request, res: Response, next: NextFunction) => {
+  const { itemId,  quantity } = req.body;
 
   try {
     // Find the user with the cart
     const userWithCart = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { email:req.decodedToken?.email },
       include: { cart: { include: { items: true } } },
     });
 
@@ -189,12 +191,19 @@ router.post('/addtocart', async (req: Request, res: Response, next: NextFunction
       where: { id: itemId },
     });
 
+    await prisma.item.update({
+      where: { id: itemId },
+      data: { stockCount: (item?.stockCount ?? 0) - quantity },
+    });
+
+    
+
     if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
 
     const cart = await prisma.cart.findUnique({
-      where: {userId: userId},
+      where: {userId: userWithCart.id},
       include: {CartItem: true}
     })
 
@@ -218,7 +227,7 @@ router.post('/addtocart', async (req: Request, res: Response, next: NextFunction
       });
     }
     const updatedCart = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id:userWithCart.id },
       include: { cart: { include: { CartItem: true } } },
     });
 
@@ -228,13 +237,13 @@ router.post('/addtocart', async (req: Request, res: Response, next: NextFunction
   }
 });
 
-router.post('/removefromcart', async (req: Request, res: Response, next: NextFunction) => {
-  const { itemId, userId } = req.body;
+router.post('/removefromcart',userValidateToken, async (req: Request, res: Response, next: NextFunction) => {
+  const { itemId} = req.body;
 
   try {
     // Find the user with the cart
     const userWithCart = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { email:req.decodedToken?.email },
       include: { cart: { include: { items: true } } },
     });
 
@@ -243,7 +252,7 @@ router.post('/removefromcart', async (req: Request, res: Response, next: NextFun
     }
 
     const cart = await prisma.cart.findUnique({
-      where: {userId: userId},
+      where: {userId: userWithCart.id},
       include: {CartItem: true}
     })
 
@@ -261,7 +270,7 @@ router.post('/removefromcart', async (req: Request, res: Response, next: NextFun
 
     // Return the updated cart
     const updatedCart = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: userWithCart.id },
       include: { cart: { include: { CartItem: true } } },
     });
 
