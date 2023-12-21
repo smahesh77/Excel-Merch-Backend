@@ -1,9 +1,9 @@
 {
 	"compilerOptions": {
-		"types": ["node", "express", "./src/types.d.ts"],
+		"types": ["node", "express", "./src/types.d.ts", "multer"],
 		"target": "es2016",
 		"module": "commonjs",
-    "outDir": "dist",
+		"outDir": "dist",
 		"rootDir": "./src",
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,

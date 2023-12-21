@@ -1,4 +1,4 @@
-// This is your Prisma schema file,
+// This is the Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -10,52 +10,46 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// schema.prisma
-
-// Define User model
 model User {
-  id          Int      @id @default(autoincrement())
+  id          Int      @id
   name        String
   email       String   @unique
+
   phoneNumber String?
-  address     Address? // Reference to the Address model
-  cart        Cart? // Reference to the Cart model
-  orders      Order[] // Reference to the Order model
+  address     Address?
+
+  orders      Order[]
+  cartItems  CartItem[]
 }
 
-// Define Address model
 model Address {
   id      Int    @id @default(autoincrement())
   city    String
+
+  house String
   area    String
   zipcode String
   state   String
+
   user    User   @relation(fields: [userId], references: [id]) // 
   userId  Int    @unique
 }
 
-// Define Cart model
-model Cart {
-  id       Int        @id @default(autoincrement())
-  items    Item[]
-  user     User       @relation(fields: [userId], references: [id])
-  userId   Int        @unique
-  CartItem CartItem[]
-}
-
 model CartItem {
-  id           Int    @id @default(autoincrement())
-  quantity     Int
-  item         Item   @relation(fields: [itemId], references: [id])
   itemId       Int
-  price        Int
-  cart         Cart   @relation(fields: [cartId], references: [id])
-  cartId       Int
-  Order        Order? @relation(fields: [orderOrderId], references: [orderId])
-  orderOrderId Int?
+  item         Item   @relation(fields: [itemId], references: [id])
+
+  userId       Int
+  user         User   @relation(fields: [userId], references: [id])
+
+  @@id([itemId, userId])
+
+
+  quantity     Int
+  sizeOption  Size
+  colorOption String
 }
 
-// Define Item model
 model Item {
   id           Int           @id @default(autoincrement())
   name         String
@@ -65,14 +59,11 @@ model Item {
   stockCount   Int
   sizeOptions  Size[]
   colorOptions String[]
-  orders       Order[] // Reference to the Order model
-  Cart         Cart?         @relation(fields: [cartId], references: [id])
-  cartId       Int?
-  CartItem     CartItem[]
-  OrderItem    OrderItem[]
+
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
 }
 
-// Define Size enum
 enum Size {
   S
   M
@@ -81,46 +72,52 @@ enum Size {
   XXL
 }
 
-// Define MediaObject model
+enum MediaTypes {
+  image
+  video
+}
+
 model MediaObject {
   id           Int    @id @default(autoincrement())
-  type         String
+  type         MediaTypes
   url          String
   colorValue   String
   viewOrdering Int
+
   itemId       Int
   item         Item   @relation(fields: [itemId], references: [id])
 }
 
-// Define Order model
 model Order {
   orderId    Int         @id @default(autoincrement())
   userId     Int
+  user       User        @relation(fields: [userId], references: [id])
+
   orderDate  DateTime    @default(now())
   status     OrderStatus
   orderItems OrderItem[]
-  address    String
-  amount     Float
-  trackingId String?
-  user       User        @relation(fields: [userId], references: [id])
-  CartItem   CartItem[]
 
-  Item   Item? @relation(fields: [itemId], references: [id])
-  itemId Int?
+  address    String
+
+  trackingId String?
+  
 }
 
-// Define OrderItem model
 model OrderItem {
   id       Int   @id @default(autoincrement())
-  orderId  Int
-  itemId   Int
+
+  sizeOption  Size
+  colorOption String
   quantity Int
   price    Float
+
+  orderId  Int
   order    Order @relation(fields: [orderId], references: [orderId])
+
+  itemId   Int
   item     Item  @relation(fields: [itemId], references: [id])
 }
 
-// Define OrderStatus enum
 enum OrderStatus {
   processing
   shipping
