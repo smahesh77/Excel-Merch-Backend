@@ -1,11 +1,11 @@
 {
   "name": "excel-merch-backend",
   "version": "1.0.0",
-  "description": "1. UserProfile\r ```\r     id\r     name\r     email\r     phoneNumber\r     address (If needed decompose to city, zipcode, state etc)",
+  "description": "Excel Merchandise backend",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon index.ts"
+    "build": "tsc",
+    "dev": "nodemon src/index.ts"
   },
   "keywords": [],
   "author": "",
