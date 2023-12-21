@@ -2,13 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { DecodedToken } from '../types';
+import { JWT_SECRET_KEY } from '../utils/env';
 
 dotenv.config();
 
   
 
 const userValidateToken = (req: Request, res: Response, next: NextFunction): void => {
-    const jwtSecret = process.env.SECRET_KEY || "";
 
     const authorizationHeader = req.headers.authorization;
 
@@ -27,7 +27,7 @@ const userValidateToken = (req: Request, res: Response, next: NextFunction): voi
     const token = tokenParts[1];
 
     try {
-        const decodedToken = jwt.verify(token, jwtSecret) as DecodedToken;
+        const decodedToken = jwt.verify(token, JWT_SECRET_KEY) as DecodedToken;
 
         if (!decodedToken.role.includes('User')) {
             res.status(403).json({ error: 'Unauthorized: Only Admins can change logostatus' });

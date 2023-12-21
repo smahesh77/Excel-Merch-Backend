@@ -1,10 +1,9 @@
 // Import necessary modules and types
 import { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { userValidateToken } from '../middleware/userAuth';
+import { prisma } from '../utils/prisma';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // order route
 router.post('/placeorder/',userValidateToken, async (req: Request, res: Response, next: NextFunction) => {

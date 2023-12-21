@@ -1,14 +1,14 @@
 // routes/itemRoutes.ts
 import { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
 import {  ItemResponse, CartResponse, ItemInCartResponse } from '../types';
 import { adminValidateToken } from '../middleware/authMiddleware';
 import { userValidateToken } from '../middleware/userAuth';
-import { Storage } from '@google-cloud/storage';
+
 import multer from 'multer';
+import { prisma } from '../utils/prisma';
+import { storageBucket } from '../utils/storage';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 enum Size {
     S = 'S',
@@ -40,22 +40,6 @@ interface ItemRequest {
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-const gcsKeyBase64 = process.env.GOOGLE_CLOUD_KEY_BASE64;
-
-if (!gcsKeyBase64) {
-  throw new Error('GOOGLE_CLOUD_KEY_BASE64 environment variable is not set');
-}
-
-// Decode the base64-encoded key
-const gcsKeyBuffer = Buffer.from(gcsKeyBase64, 'base64');
-const gcsKey = gcsKeyBuffer.toString('utf-8');
-
-const gcs = new Storage({
-  credentials: JSON.parse(gcsKey),
-  projectId: 'excel-mec-392306', // Replace with your Google Cloud project ID
-});
-
-const bucket = gcs.bucket('excelmec-merch-staging-1353d5xs42d');
 
 router.post('/',upload.array('images', 20), async (req: Request<{}, {}, ItemRequest& { image: Express.Multer.File }>, res: Response, next: NextFunction) => {
   
@@ -72,7 +56,7 @@ router.post('/',upload.array('images', 20), async (req: Request<{}, {}, ItemRequ
 
     const mediaObjects = images.map((image, index) => ({ 
       type: 'image',
-      url: `https://storage.googleapis.com/${encodeURIComponent(bucket.name)}/${encodeURIComponent(image.originalname)}`,
+      url: `https://storage.googleapis.com/${encodeURIComponent(storageBucket.name)}/${encodeURIComponent(image.originalname)}`,
       colorValue: 'default', // You may need to adjust this based on your requirements
       viewOrdering: index + 1, // You may need to adjust this based on your requirements
     }));

@@ -1,14 +1,9 @@
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
-import express, { Request, Response } from 'express';
+import express from 'express';
 import userRoutes from './routes/UserRoute'
 import itemRoutes from './routes/ItemRoutes'
 import orderRoutes from './routes/OrderRoutes'
-import { adminValidateToken } from './middleware/authMiddleware';
-
-dotenv.config();
+import { PORT } from './utils/env';
 
 const app = express();
 app.use(express.json());
@@ -31,7 +26,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: () => vo
   next(); 
 });
 
-app.listen(4000, () => {
-  console.log(`Listening on port ${4000}`);
+app.listen(PORT, () => {
+  console.log(`Listening on port ${PORT}`);
 });
    

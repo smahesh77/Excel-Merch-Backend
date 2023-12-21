@@ -1,6 +1,5 @@
 // routes/userRoutes.ts
 import { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { sign } from 'jsonwebtoken';
 import { UserData, AddressData, SignupRequest, LoginRequest, UpdateUserRequest, DecodedToken } from '../types';
@@ -8,11 +7,11 @@ import dotenv from 'dotenv';
 import { adminValidateToken } from '../middleware/authMiddleware';
 import { log } from 'console';
 import { userValidateToken } from '../middleware/userAuth';
+import { prisma } from '../utils/prisma';
 
 dotenv.config();
 
 const router = Router();
-const prisma = new PrismaClient();
 
 
 router.post('/signup', async (req: Request<{}, {}, SignupRequest>, res: Response, next: NextFunction) => {
