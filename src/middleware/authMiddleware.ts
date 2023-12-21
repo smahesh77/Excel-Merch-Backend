@@ -1,46 +1,45 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
+import jwt, { TokenExpiredError } from 'jsonwebtoken';
 import { DecodedToken } from '../types';
 import { JWT_SECRET_KEY } from '../utils/env';
+import { ForbiddenError, UnauthorizedError } from '../utils/error';
 
-dotenv.config();
+const adminValidateToken = (
+	req: Request,
+	res: Response,
+	next: NextFunction
+): void => {
+	const authorizationHeader = req.headers.authorization;
 
-  
+	if (!authorizationHeader) {
+		throw new UnauthorizedError('Missing authorization header');
+	}
 
-const adminValidateToken = (req: Request, res: Response, next: NextFunction): void => {
+	const tokenParts = authorizationHeader.split(' ');
 
-    const authorizationHeader = req.headers.authorization;
+	if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
+		throw new UnauthorizedError('Invalid authorization header format');
+	}
 
-    if (!authorizationHeader) {
-        res.status(401).json({ error: 'Unauthorized: Missing authorization header' });
-        return;
-    }
+	const token = tokenParts[1];
 
-    const tokenParts = authorizationHeader.split(' ');
+	try {
+		const decodedToken = jwt.verify(token, JWT_SECRET_KEY) as DecodedToken;
 
-    if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
-        res.status(401).json({ error: 'Unauthorized: Invalid authorization header format' });
-        return;
-    }
+		if (!decodedToken.role.includes('Admin')) {
+			throw new ForbiddenError('Only Admins can access this');
+		}
 
-    const token = tokenParts[1];
+		req.decodedToken = decodedToken;
 
-    try {
-        const decodedToken = jwt.verify(token, JWT_SECRET_KEY) as DecodedToken;
+		next();
+	} catch (err) {
+		if (err instanceof TokenExpiredError) {
+			throw new UnauthorizedError('Token expired');
+		}
 
-        if (!decodedToken.role.includes('Admin')) {
-            res.status(403).json({ error: 'Unauthorized: Only Admins can access this' });
-            return;
-        }
-
-        req.decodedToken = decodedToken;
-
-
-        next();
-    } catch (err) {
-        res.status(401).json({ error: 'Unauthorized: Invalid token' , err: err});
-    }
-}
+		throw new UnauthorizedError('Invalid token');
+	}
+};
 
 export { adminValidateToken };

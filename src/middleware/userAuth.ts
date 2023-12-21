@@ -1,27 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
+import jwt, { TokenExpiredError } from 'jsonwebtoken';
 import { DecodedToken } from '../types';
 import { JWT_SECRET_KEY } from '../utils/env';
-
-dotenv.config();
+import { UnauthorizedError } from '../utils/error';
 
   
-
 const userValidateToken = (req: Request, res: Response, next: NextFunction): void => {
 
     const authorizationHeader = req.headers.authorization;
 
     if (!authorizationHeader) {
-        res.status(401).json({ error: 'Unauthorized: Missing authorization header' });
-        return;
+        throw new UnauthorizedError('Missing authorization header');
     }
 
     const tokenParts = authorizationHeader.split(' ');
 
     if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
-        res.status(401).json({ error: 'Unauthorized: Invalid authorization header format' });
-        return;
+        throw new UnauthorizedError ('Invalid authorization header format');
     }
 
     const token = tokenParts[1];
@@ -29,17 +24,20 @@ const userValidateToken = (req: Request, res: Response, next: NextFunction): voi
     try {
         const decodedToken = jwt.verify(token, JWT_SECRET_KEY) as DecodedToken;
 
-        if (!decodedToken.role.includes('User')) {
-            res.status(403).json({ error: 'Unauthorized: Only Admins can change logostatus' });
-            return;
-        }
+        // if (!decodedToken.role.includes('User')) {
+        //     res.status(403).json({ error: 'Unauthorized: Only Admins can change logostatus' });
+        //     return;
+        // }
 
         req.decodedToken = decodedToken;
 
-
         next();
     } catch (err) {
-        res.status(401).json({ error: 'Unauthorized: Invalid token' , err: err});
+        if (err instanceof TokenExpiredError) {
+            throw new UnauthorizedError('Token expired');
+        }
+
+        throw new UnauthorizedError('Invalid token');
     }
 }
 
