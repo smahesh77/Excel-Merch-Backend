@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { DecodedToken } from '../types';
 
 dotenv.config();
+
+  
 
 const adminValidateToken = (req: Request, res: Response, next: NextFunction): void => {
     const jwtSecret = process.env.SECRET_KEY || "";
@@ -24,17 +27,19 @@ const adminValidateToken = (req: Request, res: Response, next: NextFunction): vo
     const token = tokenParts[1];
 
     try {
-        const decodedToken = jwt.verify(token, jwtSecret) as { role: string };
+        const decodedToken = jwt.verify(token, jwtSecret) as DecodedToken;
 
         if (!decodedToken.role.includes('Admin')) {
-            res.status(403).json({ error: 'Unauthorized: Only Admins can change logostatus' });
+            res.status(403).json({ error: 'Unauthorized: Only Admins can access this' });
             return;
         }
+
+        req.decodedToken = decodedToken;
 
 
         next();
     } catch (err) {
-        res.status(401).json({ error: 'Unauthorized: Invalid token' });
+        res.status(401).json({ error: 'Unauthorized: Invalid token' , err: err});
     }
 }
 

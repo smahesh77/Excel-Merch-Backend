@@ -2,6 +2,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import {  ItemResponse, CartResponse, ItemInCartResponse } from '../types';
+import { adminValidateToken } from '../middleware/authMiddleware';
+import { userValidateToken } from '../middleware/userAuth';
+import { Storage } from '@google-cloud/storage';
+import multer from 'multer';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -30,32 +34,72 @@ interface ItemRequest {
   sizeOptions: Size[];
   colorOptions: string[];
   mediaObject: mediaObject;
+  data: string;
 }
 
-router.post('/add', async (req: Request<{}, {}, ItemRequest>, res: Response, next: NextFunction) => {
-  const { name, description, price, stockCount, sizeOptions, colorOptions, mediaObject } = req.body;
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+const gcsKeyBase64 = process.env.GOOGLE_CLOUD_KEY_BASE64;
+
+if (!gcsKeyBase64) {
+  throw new Error('GOOGLE_CLOUD_KEY_BASE64 environment variable is not set');
+}
+
+// Decode the base64-encoded key
+const gcsKeyBuffer = Buffer.from(gcsKeyBase64, 'base64');
+const gcsKey = gcsKeyBuffer.toString('utf-8');
+
+const gcs = new Storage({
+  credentials: JSON.parse(gcsKey),
+  projectId: 'excel-mec-392306', // Replace with your Google Cloud project ID
+});
+
+const bucket = gcs.bucket('excelmec-merch-staging-1353d5xs42d');
+
+router.post('/',upload.array('images', 20), async (req: Request<{}, {}, ItemRequest& { image: Express.Multer.File }>, res: Response, next: NextFunction) => {
+  
+  const { name, description, price, stockCount, sizeOptions, colorOptions, mediaObject } = JSON.parse(req.body.data);
+  const images = req.files as Express.Multer.File[];
 
   try {
-    const newItem = await prisma.item.create({
-      data: {
-        name,
-        description,
-        price,
-        mediaObjects: {
-          create: {
-            type: mediaObject.type,
-            url: mediaObject.url,
-            colorValue: mediaObject.colorValue,
-            viewOrdering: mediaObject.viewOrdering
-          },
-        },
-        stockCount,
-        sizeOptions: { set: sizeOptions },
-        colorOptions: { set: colorOptions },
-      },
-    });
 
-    res.json(newItem);
+    
+
+    if (!images) {
+      return res.status(400).json({ error: 'Image file is required' }); 
+    }
+
+    const mediaObjects = images.map((image, index) => ({ 
+      type: 'image',
+      url: `https://storage.googleapis.com/${encodeURIComponent(bucket.name)}/${encodeURIComponent(image.originalname)}`,
+      colorValue: 'default', // You may need to adjust this based on your requirements
+      viewOrdering: index + 1, // You may need to adjust this based on your requirements
+    }));
+
+
+
+    
+
+      // Create the new item with the GCS URL
+      const newItem = await prisma.item.create({
+        data: {
+          name,
+          description,
+          price,
+          mediaObjects: {
+            create: mediaObjects,
+          },
+          stockCount,
+          sizeOptions: { set: sizeOptions },
+          colorOptions: { set: colorOptions },
+        },
+      });
+
+      res.json(newItem);
+
+
+
   } catch (err) {
     next(err);
   }
@@ -100,7 +144,7 @@ router.get('/:itemId', async (req: Request, res: Response, next: NextFunction) =
   }
 });
 
-router.patch('/:itemId', async (req: Request<{ itemId: string }, {}, ItemRequest>, res: Response, next: NextFunction) => {
+router.patch('/:itemId',adminValidateToken, async (req: Request<{ itemId: string }, {}, ItemRequest>, res: Response, next: NextFunction) => {
   const itemId = parseInt(req.params.itemId, 10);
   const { name, description, price, stockCount, sizeOptions, colorOptions } = req.body;
 
@@ -123,7 +167,7 @@ router.patch('/:itemId', async (req: Request<{ itemId: string }, {}, ItemRequest
   }
 });
 
-router.put('/:itemId', async (req: Request<{ itemId: string }, {}, ItemRequest>, res: Response, next: NextFunction) => {
+router.put('/:itemId',adminValidateToken, async (req: Request<{ itemId: string }, {}, ItemRequest>, res: Response, next: NextFunction) => {
   const itemId = parseInt(req.params.itemId, 10);
   const { name, description, price, stockCount, sizeOptions, colorOptions } = req.body;
 
@@ -146,7 +190,7 @@ router.put('/:itemId', async (req: Request<{ itemId: string }, {}, ItemRequest>,
   }
 });
 
-router.delete('/:itemId', async (req: Request<{ itemId: string }>, res: Response, next: NextFunction) => {
+router.delete('/:itemId',adminValidateToken, async (req: Request<{ itemId: string }>, res: Response, next: NextFunction) => {
   const itemId = parseInt(req.params.itemId, 10);
 
   try {
@@ -170,13 +214,13 @@ interface AddToCartRequest {
   size: string;
 }
 
-router.post('/addtocart', async (req: Request, res: Response, next: NextFunction) => {
-  const { itemId, userId, quantity } = req.body;
+router.post('/addtocart',userValidateToken, async (req: Request, res: Response, next: NextFunction) => {
+  const { itemId,  quantity } = req.body;
 
   try {
     // Find the user with the cart
     const userWithCart = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { email:req.decodedToken?.email },
       include: { cart: { include: { items: true } } },
     });
 
@@ -189,12 +233,19 @@ router.post('/addtocart', async (req: Request, res: Response, next: NextFunction
       where: { id: itemId },
     });
 
+    await prisma.item.update({
+      where: { id: itemId },
+      data: { stockCount: (item?.stockCount ?? 0) - quantity },
+    });
+
+    
+
     if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
 
     const cart = await prisma.cart.findUnique({
-      where: {userId: userId},
+      where: {userId: userWithCart.id},
       include: {CartItem: true}
     })
 
@@ -218,7 +269,7 @@ router.post('/addtocart', async (req: Request, res: Response, next: NextFunction
       });
     }
     const updatedCart = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id:userWithCart.id },
       include: { cart: { include: { CartItem: true } } },
     });
 
@@ -228,13 +279,13 @@ router.post('/addtocart', async (req: Request, res: Response, next: NextFunction
   }
 });
 
-router.post('/removefromcart', async (req: Request, res: Response, next: NextFunction) => {
-  const { itemId, userId } = req.body;
+router.post('/removefromcart',userValidateToken, async (req: Request, res: Response, next: NextFunction) => {
+  const { itemId} = req.body;
 
   try {
     // Find the user with the cart
     const userWithCart = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { email:req.decodedToken?.email },
       include: { cart: { include: { items: true } } },
     });
 
@@ -243,7 +294,7 @@ router.post('/removefromcart', async (req: Request, res: Response, next: NextFun
     }
 
     const cart = await prisma.cart.findUnique({
-      where: {userId: userId},
+      where: {userId: userWithCart.id},
       include: {CartItem: true}
     })
 
@@ -261,7 +312,7 @@ router.post('/removefromcart', async (req: Request, res: Response, next: NextFun
 
     // Return the updated cart
     const updatedCart = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: userWithCart.id },
       include: { cart: { include: { CartItem: true } } },
     });
 

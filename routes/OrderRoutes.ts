@@ -1,18 +1,19 @@
 // Import necessary modules and types
 import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { userValidateToken } from '../middleware/userAuth';
 
 const router = Router();
 const prisma = new PrismaClient();
 
 // order route
-router.post('/placeorder/:userId', async (req: Request, res: Response, next: NextFunction) => {
-  const userId = parseInt(req.params.userId, 10);
+router.post('/placeorder/',userValidateToken, async (req: Request, res: Response, next: NextFunction) => {
+  
 
   try {
     // Find the user with the cart and cart items
     const userWithCart = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { email:req.decodedToken?.email },
       include: { cart: { include: { CartItem: true } ,},address:true },
     });
 
@@ -29,7 +30,7 @@ router.post('/placeorder/:userId', async (req: Request, res: Response, next: Nex
 
     const createdOrder = await prisma.order.create({
       data: {
-        userId: userId,
+        userId: userWithCart.id,
         address: `${userWithCart.address?.area} ${userWithCart.address?.city} ${userWithCart.address?.zipcode} ${userWithCart.address?.state}`,
         amount: totalAmount,
         status: 'processing',
@@ -67,7 +68,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction)=>{
   }
 })
 
-router.put('/updatestatus/:orderId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/status/:orderId', async (req: Request, res: Response, next: NextFunction) => {
   const orderId = parseInt(req.params.orderId, 10);
   const { status } = req.body;
 

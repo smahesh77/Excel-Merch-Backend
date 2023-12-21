@@ -16,9 +16,11 @@ export interface UserData {
     state: string;
   }
   
-  export interface LoginRequest {
-    email: string;
-    password: string;
+  export interface LoginRequest extends UserData{
+    city?: string;
+    zipcode?: string;
+    state?: string;
+    area?: string;
   }
   
   export interface SignupRequest extends UserData {
@@ -37,6 +39,21 @@ export interface UserData {
     state?: string;
   }
   // types.ts
+
+  
+export type DecodedToken = {
+  user_id: string;
+  name: string;
+  email: string;
+  isPaid: 'True' | 'False';
+  picture: string;
+  role: string;
+  nbf: number;
+  exp: number;
+  iat: number;
+  iss: string;
+};
+
 
 
 
