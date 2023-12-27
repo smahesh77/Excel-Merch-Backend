@@ -2,7 +2,13 @@ import { Router } from 'express';
 import { isAuthenticated, isMerchAdmin } from '../../middleware/authMiddleware';
 import { updateOrderStatus } from '../../controllers/OrderControllers';
 import multer from 'multer';
-import { createNewItemController, deleteItemController, updateItemController } from '../../controllers/ItemControllers';
+import {
+	createNewItemController,
+	deleteItemController,
+	updateItemController,
+} from '../../controllers/ItemControllers';
+import { createItemValidator } from '../../middleware/Item/createItemValidator';
+import { updateItemValidator } from '../../middleware/Item/updateItemValidator';
 
 export const adminRouter = Router();
 
@@ -20,7 +26,8 @@ adminRouter.post(
 	'/item',
 	isAuthenticated,
 	isMerchAdmin,
-	upload.array('images', 20),
+	upload.fields([{ name: 'media', maxCount: 25 }]),
+	createItemValidator,
 	createNewItemController
 );
 
@@ -29,6 +36,8 @@ adminRouter.put(
 	'/item/:itemId',
 	isAuthenticated,
 	isMerchAdmin,
+	upload.fields([{ name: 'media', maxCount: 25 }]),
+	updateItemValidator,
 	updateItemController
 );
 

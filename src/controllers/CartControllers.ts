@@ -169,12 +169,16 @@ ${userProfile.address?.zipcode}
 `;
 
 		const stockUpdationCalls = userProfile.cartItems.map((cartItem) => {
-			return prisma.item.update({
+			return prisma.stockCount.update({
 				where: {
-					id: cartItem.itemId,
+					itemId_colorOption_sizeOption: {
+						itemId: cartItem.itemId,
+						colorOption: cartItem.colorOption,
+						sizeOption: cartItem.sizeOption,
+					},
 				},
 				data: {
-					stockCount: {
+					count: {
 						decrement: cartItem.quantity,
 					},
 				},
