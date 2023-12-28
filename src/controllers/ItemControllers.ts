@@ -416,10 +416,6 @@ export async function deleteItemController(
 
 		await prisma.item.delete({
 			where: { id: itemId },
-			// onDelete: {
-			// 	mediaObjects: true,
-			// 	stockCount: true,
-			// },
 		});
 
 		await storageBucket.deleteFiles({
