@@ -105,6 +105,22 @@ export async function addItemToCart(
 			);
 		}
 
+		const userCreatedCartItem = await prisma.user.findUnique({
+			where: {
+				id: decodedUser.user_id,
+			},
+		});
+
+		if (!userCreatedCartItem) {
+			await prisma.user.create({
+				data: {
+					id: decodedUser.user_id,
+					email: decodedUser.email,
+					name: decodedUser.name,
+				},
+			});
+		}
+
 		const cartItem = await prisma.cartItem.upsert({
 			where: {
 				itemId_userId: {
@@ -227,7 +243,11 @@ export async function checkoutController(
 		});
 
 		if (!userProfile) {
-			throw new BadRequestError('Complete your profile to continue');
+			throw new BadRequestError('Create profile first');
+		}
+
+		if(!userProfile.address) {
+			throw new BadRequestError('Add address first');
 		}
 
 		if (userProfile.cartItems?.length === 0) {
