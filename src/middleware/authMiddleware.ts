@@ -51,9 +51,30 @@ export function isMerchAdmin(req: Request, res: Response, next: NextFunction) {
 		throw new InternalServerError('No decoded user token found');
 	}
 
-	if (!req.decodedToken.role.includes('Admin')) {
-		throw new ForbiddenError('Only MerchAdmins can access this route');
+	const allowedRoles = ['Admin', 'MerchManage'];
+
+	if (!req.decodedToken.role) {
+		throw new ForbiddenError(
+			'Your role is not allowed to access this route'
+		);
 	}
 
-	next();
+	if (typeof req.decodedToken.role === 'string') {
+		if (!allowedRoles.includes(req.decodedToken.role)) {
+			throw new ForbiddenError(
+				'Your role is not allowed to access this route'
+			);
+		} else {
+			return next();
+		}
+	}
+	const incomingRoles = req.decodedToken.role;
+
+	if (!req.decodedToken.role.some((role) => allowedRoles.includes(role))) {
+		throw new ForbiddenError(
+			'Your role is not allowed to access this route'
+		);
+	}
+
+	return next();
 }
