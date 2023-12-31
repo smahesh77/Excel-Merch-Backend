@@ -19,14 +19,27 @@ adminRouter.put(
 	updateOrderStatus
 );
 
-// TODO: Support image and video
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({ 
+	storage: storage,
+	limits: {
+		fileSize: 1024 * 1024 * 50,
+		fieldSize: 1024 * 1024 * 30,
+	}
+ });
+
+const fieldConfig = [
+	{
+		name: 'media',
+		maxCount: 50
+	}
+];
+
 adminRouter.post(
 	'/item',
 	isAuthenticated,
 	isMerchAdmin,
-	upload.fields([{ name: 'media', maxCount: 25 }]),
+	upload.fields(fieldConfig),
 	createItemValidator,
 	createNewItemController
 );
@@ -36,7 +49,7 @@ adminRouter.put(
 	'/item/:itemId',
 	isAuthenticated,
 	isMerchAdmin,
-	upload.fields([{ name: 'media', maxCount: 25 }]),
+	upload.fields(fieldConfig),
 	updateItemValidator,
 	updateItemController
 );
