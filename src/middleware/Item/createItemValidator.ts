@@ -65,23 +65,24 @@ const createItemValidators = [
 		.isArray({
 			min: 1,
 		})
-		.withMessage('At least one size option is required'),
+		.withMessage('At least one size option is required')
+		.custom(noDuplicates),
 
 	body('data.sizeOptions.*')
 		.isString()
 		.isIn(sizes)
 		.withMessage(
 			(value) => `${value} is not a valid size specified in sizeOptions`
-		)
-		.custom(noDuplicates),
+		),
 
 	body('data.colorOptions')
 		.isArray({
 			min: 1,
 		})
-		.withMessage('At least one color option is required'),
+		.withMessage('At least one color option is required')
+		.custom(noDuplicates),
 
-	body('data.colorOptions.*').isString().custom(noDuplicates),
+	body('data.colorOptions.*').isString(),
 
 	body('data.stockCount')
 		.isArray()
