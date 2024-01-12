@@ -3,17 +3,17 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/github.com/excelmec/excel-merch-backend:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/github.com/excelmec/excel-merch-backend/cron:$COMMIT_SHA'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/github.com/excelmec/excel-merch-backend:latest'
+      - 'gcr.io/$PROJECT_ID/github.com/excelmec/excel-merch-backend/cron:latest'
       - '-f'
       - 'Dockerfile.cron'
       - '.'
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/github.com/excelmec/excel-merch-backend:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/github.com/excelmec/excel-merch-backend/cron:$COMMIT_SHA'
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/github.com/excelmec/excel-merch-backend:latest'
+      - 'gcr.io/$PROJECT_ID/github.com/excelmec/excel-merch-backend/cron:latest'
