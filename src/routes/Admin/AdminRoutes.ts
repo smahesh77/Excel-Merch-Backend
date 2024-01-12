@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { isAuthenticated, isMerchAdmin } from '../../middleware/authMiddleware';
-import { updateOrderStatus } from '../../controllers/OrderControllers';
 import multer from 'multer';
 import {
 	createNewItemController,
@@ -9,6 +8,7 @@ import {
 } from '../../controllers/ItemControllers';
 import { createItemValidator } from '../../middleware/Item/createItemValidator';
 import { updateItemValidator } from '../../middleware/Item/updateItemValidator';
+import { updateOrderStatus } from '../../controllers/AdminControllers';
 
 export const adminRouter = Router();
 

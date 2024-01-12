@@ -1,8 +1,17 @@
 import { NextFunction, Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
-import { OrderStatus, Size } from '@prisma/client';
+import { PaymentStatus, ShippingStatus, Size } from '@prisma/client';
 import { BadRequestError, InternalServerError } from '../utils/error';
 import { PrismaClientUnknownRequestError } from '@prisma/client/runtime/library';
+import { getTransferAmountInRs, razorpay } from '../utils/razorpay';
+import {
+	DeliveryChargeInRs,
+	OrderAmtAboveWhichFreeDeliveryInRs,
+} from '../utils/constants';
+import { v4 as uuidv4 } from 'uuid';
+import { RAZORPAY_TRANSFER_ACC_ID } from '../utils/env';
+import { Transfers } from 'razorpay/dist/types/transfers';
+import { Orders } from 'razorpay/dist/types/orders';
 
 export async function getUserCartItems(
 	req: Request,
@@ -24,7 +33,24 @@ export async function getUserCartItems(
 			},
 		});
 
-		return res.status(200).json({ cartItems });
+		const pendingOrders = await prisma.order.findMany({
+			where: {
+				userId: decodedUser.user_id,
+				paymentStatus: PaymentStatus.payment_pending,
+			},
+		});
+		let message = 'Cart Items Fetched';
+
+		if (pendingOrders.length > 0) {
+			message =
+				'You have a pending order. Please complete that first. You can only have one pending order at a time';
+		}
+
+		return res.status(200).json({
+			cartItems,
+			pendingOrders,
+			message,
+		});
 	} catch (err) {
 		next(err);
 	}
@@ -221,8 +247,7 @@ export async function emptyCart(
 }
 
 // TODO: test if this works
-// TODO: Handle Payments
-// TODO: Handle if any stockCount is not enough
+// TODO: Handle too long order payment Timeout
 export async function checkoutController(
 	req: Request,
 	res: Response,
@@ -239,6 +264,7 @@ export async function checkoutController(
 						item: true,
 					},
 				},
+				orders: true,
 			},
 		});
 
@@ -246,12 +272,20 @@ export async function checkoutController(
 			throw new BadRequestError('Create profile first');
 		}
 
-		if(!userProfile.address) {
+		if (!userProfile.address) {
 			throw new BadRequestError('Add address first');
 		}
 
 		if (userProfile.cartItems?.length === 0) {
 			throw new BadRequestError('Cart is empty');
+		}
+
+		for (const order of userProfile.orders) {
+			if (order.paymentStatus === PaymentStatus.payment_pending) {
+				throw new BadRequestError(
+					'You already have a pending order. Please complete that first'
+				);
+			}
 		}
 
 		// TODO: Make better address format
@@ -298,6 +332,57 @@ ${userProfile.address?.zipcode}
 		}
 
 		/**
+		 * Can be max 40 characters as per Razorpay "receipt" field
+		 */
+		const orderId = `exc_${uuidv4()}`;
+		let razOrder: Orders.RazorpayOrder | undefined = undefined;
+
+		try {
+			const orderAmountInRs = userProfile.cartItems.reduce(
+				(acc, cartItem) => {
+					return acc + cartItem.item.price * cartItem.quantity;
+				},
+				0
+			);
+
+			if (orderAmountInRs === 0) {
+				throw new BadRequestError('Order amount cannot be zero');
+			}
+
+			let totalAmountInRs = orderAmountInRs;
+			if (orderAmountInRs <= OrderAmtAboveWhichFreeDeliveryInRs) {
+				totalAmountInRs += DeliveryChargeInRs;
+			}
+
+			const transfers: Transfers.RazorpayTransferCreateRequestBody[] = [];
+			if (RAZORPAY_TRANSFER_ACC_ID) {
+				const transferAmt = getTransferAmountInRs(totalAmountInRs);
+				transfers.push({
+					account: RAZORPAY_TRANSFER_ACC_ID,
+					amount: transferAmt * 100,
+					currency: 'INR',
+				});
+			}
+
+			razOrder = await razorpay.orders.create({
+				amount: totalAmountInRs * 100,
+				currency: 'INR',
+				receipt: orderId,
+				transfers: transfers,
+				notes: {
+					orderId: orderId,
+					user_id: decodedUser.user_id,
+					user_email: decodedUser.email,
+				},
+			});
+		} catch (err) {
+			throw new InternalServerError(
+				'Error While creating Razorpay Order',
+				{ err }
+			);
+		}
+
+		/**
 		 * Even if above check passes, there is a chance
 		 * that stockCount is updated after the check.
 		 * So, we will update the stockCount in a transaction
@@ -329,8 +414,12 @@ ${userProfile.address?.zipcode}
 					prisma.order.create({
 						data: {
 							userId: decodedUser.user_id,
-							status: OrderStatus.processing,
+							paymentStatus: PaymentStatus.payment_pending,
+							shippingStatus: ShippingStatus.not_shipped,
 							address: orderAddress,
+
+							orderId: orderId,
+							razOrderId: razOrder.id,
 							orderItems: {
 								create: userProfile.cartItems.map(
 									(cartItem) => ({

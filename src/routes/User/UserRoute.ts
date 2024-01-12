@@ -5,7 +5,7 @@ import {
 	updateProfileController,
 } from '../../controllers/UserControllers';
 import { cartRouter } from './CartRoutes';
-import { getOrders } from '../../controllers/OrderControllers';
+import { cancelOrder, getOrder, getOrders } from '../../controllers/OrderControllers';
 
 export const userRouter = Router();
 
@@ -16,3 +16,5 @@ userRouter.post('/profile', isAuthenticated, updateProfileController);
 userRouter.use('/cart', cartRouter);
 
 userRouter.get('/orders', isAuthenticated, getOrders);
+userRouter.get('/orders/:orderId', isAuthenticated, getOrder);
+userRouter.post('/orders/:orderId/cancel', isAuthenticated, cancelOrder);
