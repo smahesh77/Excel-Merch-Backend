@@ -1,6 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
-import { PaymentStatus, ShippingStatus, Size } from '@prisma/client';
+import {
+	AdditionalOrderCharges,
+	OrderStatus,
+	PaymentStatus,
+	ShippingStatus,
+	Size,
+} from '@prisma/client';
 import { BadRequestError, InternalServerError } from '../utils/error';
 import { PrismaClientUnknownRequestError } from '@prisma/client/runtime/library';
 import { getTransferAmountInRs, razorpay } from '../utils/razorpay';
@@ -37,13 +43,13 @@ export async function getUserCartItems(
 			where: {
 				userId: decodedUser.user_id,
 				paymentStatus: PaymentStatus.payment_pending,
+				orderStatus: OrderStatus.order_unconfirmed,
 			},
 		});
 		let message = 'Cart Items Fetched';
 
 		if (pendingOrders.length > 0) {
-			message =
-				'You have a pending order. Please complete that first. You can only have one pending order at a time';
+			message = 'You have pending orders. Please complete that first.';
 		}
 
 		return res.status(200).json({
@@ -247,7 +253,6 @@ export async function emptyCart(
 }
 
 // TODO: test if this works
-// TODO: Handle too long order payment Timeout
 export async function checkoutController(
 	req: Request,
 	res: Response,
@@ -278,14 +283,6 @@ export async function checkoutController(
 
 		if (userProfile.cartItems?.length === 0) {
 			throw new BadRequestError('Cart is empty');
-		}
-
-		for (const order of userProfile.orders) {
-			if (order.paymentStatus === PaymentStatus.payment_pending) {
-				throw new BadRequestError(
-					'You already have a pending order. Please complete that first'
-				);
-			}
 		}
 
 		// TODO: Make better address format
@@ -333,27 +330,36 @@ ${userProfile.address?.zipcode}
 
 		/**
 		 * Can be max 40 characters as per Razorpay "receipt" field
+		 * uuidv4() will generate a 36 character string
 		 */
 		const orderId = `exc_${uuidv4()}`;
 		let razOrder: Orders.RazorpayOrder | undefined = undefined;
 
+		let additionalCharges: Pick<
+			AdditionalOrderCharges,
+			'chargeType' | 'chargeAmountInRs'
+		>[] = [];
+		const orderAmountInRs = userProfile.cartItems.reduce(
+			(acc, cartItem) => {
+				return acc + cartItem.item.price * cartItem.quantity;
+			},
+			0
+		);
+
+		if (orderAmountInRs === 0) {
+			throw new BadRequestError('Order amount cannot be zero');
+		}
+
+		let totalAmountInRs = orderAmountInRs;
+		if (orderAmountInRs <= OrderAmtAboveWhichFreeDeliveryInRs) {
+			totalAmountInRs += DeliveryChargeInRs;
+			additionalCharges.push({
+				chargeType: 'Delivery Charge',
+				chargeAmountInRs: DeliveryChargeInRs,
+			});
+		}
+
 		try {
-			const orderAmountInRs = userProfile.cartItems.reduce(
-				(acc, cartItem) => {
-					return acc + cartItem.item.price * cartItem.quantity;
-				},
-				0
-			);
-
-			if (orderAmountInRs === 0) {
-				throw new BadRequestError('Order amount cannot be zero');
-			}
-
-			let totalAmountInRs = orderAmountInRs;
-			if (orderAmountInRs <= OrderAmtAboveWhichFreeDeliveryInRs) {
-				totalAmountInRs += DeliveryChargeInRs;
-			}
-
 			const transfers: Transfers.RazorpayTransferCreateRequestBody[] = [];
 			if (RAZORPAY_TRANSFER_ACC_ID) {
 				const transferAmt = getTransferAmountInRs(totalAmountInRs);
@@ -382,82 +388,45 @@ ${userProfile.address?.zipcode}
 			);
 		}
 
-		/**
-		 * Even if above check passes, there is a chance
-		 * that stockCount is updated after the check.
-		 * So, we will update the stockCount in a transaction
-		 * The stockCount table has a check constraint
-		 * that count should not be less than zero.
-		 * So, if the count is less than zero, it will
-		 * revert the transaction.
-		 */
-		const stockUpdationCalls = userProfile.cartItems.map((cartItem) => {
-			return prisma.stockCount.update({
-				where: {
-					itemId_colorOption_sizeOption: {
-						itemId: cartItem.itemId,
-						colorOption: cartItem.colorOption,
-						sizeOption: cartItem.sizeOption,
-					},
-				},
+		const [order, cartItemsDelete] = await prisma.$transaction([
+			prisma.order.create({
 				data: {
-					count: {
-						decrement: cartItem.quantity,
+					userId: decodedUser.user_id,
+					address: orderAddress,
+					orderId: orderId,
+					razOrderId: razOrder.id,
+					orderItems: {
+						create: userProfile.cartItems.map((cartItem) => ({
+							itemId: cartItem.itemId,
+							quantity: cartItem.quantity,
+							colorOption: cartItem.colorOption,
+							sizeOption: cartItem.sizeOption,
+							price: cartItem.item.price,
+						})),
 					},
+
+					additionalCharges: {
+						create: additionalCharges,
+					},
+					totalAmountInRs: totalAmountInRs,
+
+					orderStatus: OrderStatus.order_unconfirmed,
+					paymentStatus: PaymentStatus.payment_pending,
+					shippingStatus: ShippingStatus.not_shipped,
 				},
-			});
-		});
 
-		try {
-			const [order, cartItemsDelete, ...stockUpdationResponses] =
-				await prisma.$transaction([
-					prisma.order.create({
-						data: {
-							userId: decodedUser.user_id,
-							paymentStatus: PaymentStatus.payment_pending,
-							shippingStatus: ShippingStatus.not_shipped,
-							address: orderAddress,
+				include: {
+					orderItems: true,
+				},
+			}),
+			prisma.cartItem.deleteMany({
+				where: {
+					userId: decodedUser.user_id,
+				},
+			}),
+		]);
 
-							orderId: orderId,
-							razOrderId: razOrder.id,
-							orderItems: {
-								create: userProfile.cartItems.map(
-									(cartItem) => ({
-										itemId: cartItem.itemId,
-										quantity: cartItem.quantity,
-										colorOption: cartItem.colorOption,
-										sizeOption: cartItem.sizeOption,
-										price: cartItem.item.price,
-									})
-								),
-							},
-						},
-
-						include: {
-							orderItems: true,
-						},
-					}),
-					prisma.cartItem.deleteMany({
-						where: {
-							userId: decodedUser.user_id,
-						},
-					}),
-
-					...stockUpdationCalls,
-				]);
-
-			return res.status(200).json({ order });
-		} catch (err: any) {
-			if (
-				err instanceof PrismaClientUnknownRequestError &&
-				err.message.includes('violates check constraint')
-			) {
-				throw new BadRequestError(
-					'Stock not enough. Stock decresed after you added to cart. Please try again'
-				);
-			}
-			throw new InternalServerError('Error While Checking Out');
-		}
+		return res.status(200).json({ order });
 	} catch (err) {
 		next(err);
 	}

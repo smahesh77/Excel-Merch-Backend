@@ -1,3 +1,3 @@
-import { checkPendingOrders } from "./utils/cron";
+// import { checkPendingOrders } from "./utils/cron";
 
-checkPendingOrders();
+// checkPendingOrders();

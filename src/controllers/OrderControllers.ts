@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../utils/prisma';
 import { BadRequestError, NotFoundError } from '../utils/error';
 import { razorpay } from '../utils/razorpay';
-import { PaymentStatus, ShippingStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
 
 export async function getOrders(
 	req: Request,
@@ -43,7 +43,7 @@ export async function getOrder(
 	try {
 		const decodedUser = req.decodedToken!;
 		const orderId = req.params.orderId;
-		
+
 		if (!orderId) {
 			throw new BadRequestError('Order ID not provided');
 		}
@@ -80,7 +80,9 @@ export async function getOrder(
 		 */
 		if (
 			razorpayOrder.status === 'paid' &&
-			order.paymentStatus === PaymentStatus.payment_pending
+			order.paymentStatus === PaymentStatus.payment_pending &&
+			order.orderStatus === OrderStatus.order_unconfirmed &&
+			order.shippingStatus === ShippingStatus.not_shipped
 		) {
 			await prisma.order.update({
 				where: {
@@ -88,6 +90,7 @@ export async function getOrder(
 				},
 				data: {
 					paymentStatus: PaymentStatus.payment_received,
+					orderStatus: OrderStatus.order_confirmed,
 				},
 			});
 		}
@@ -132,15 +135,15 @@ export async function cancelOrder(
 
 		if (
 			order.paymentStatus === PaymentStatus.payment_pending &&
-			order.shippingStatus === ShippingStatus.not_shipped
+			order.shippingStatus === ShippingStatus.not_shipped &&
+			order.orderStatus === OrderStatus.order_unconfirmed
 		) {
 			await prisma.order.update({
 				where: {
 					orderId: orderId,
 				},
 				data: {
-					paymentStatus: PaymentStatus.payment_pending,
-					shippingStatus: ShippingStatus.cancelled,
+					orderStatus: OrderStatus.order_cancelled_by_user,
 				},
 			});
 
@@ -149,7 +152,8 @@ export async function cancelOrder(
 
 		return res.status(400).json({
 			message:
-				'Order cannot be cancelled for current payment and shipping status',
+				'Order cannot be cancelled for current order, payment and shipping status',
+			orderStatus: order.orderStatus,
 			paymentStatus: order.paymentStatus,
 			shippingStatus: order.shippingStatus,
 		});
