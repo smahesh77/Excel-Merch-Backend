@@ -271,18 +271,37 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 						},
 					});
 
-					await razorpay.payments.refund(
-						reqPayload.payload.payment.entity.id,
-						{
-							amount: reqPayload.payload.payment.entity.amount,
-							speed: 'optimum',
-							receipt: merchOrderId,
-							notes: {
-								reason: 'stock ran out',
+					try {
+						await razorpay.payments.refund(
+							reqPayload.payload.payment.entity.id,
+							{
+								amount: reqPayload.payload.payment.entity
+									.amount,
+								speed: 'optimum',
+								receipt: merchOrderId,
+								notes: {
+									reason: 'stock ran out',
+								},
+							}
+						);
+					} catch (err) {
+						console.error('Refund failed', {
+							merchOrderId,
+							razorpayOrderId,
+							reqPayload,
+						});
+						await prisma.order.update({
+							where: {
+								orderId: merchOrderId,
 							},
-						}
-					);
+							data: {
+								paymentStatus:
+									PaymentStatus.payment_refund_failed,
+							},
+						});
 
+						// TODO: send email to admin
+					}
 					return {
 						message: 'Order cancelled due to insufficient stock',
 					};
