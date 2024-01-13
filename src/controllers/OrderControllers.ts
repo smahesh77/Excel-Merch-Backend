@@ -132,7 +132,7 @@ export async function cancelOrder(
 
 		if (
 			order.paymentStatus === PaymentStatus.payment_pending &&
-			order.shippingStatus === ShippingStatus.processing
+			order.shippingStatus === ShippingStatus.not_shipped
 		) {
 			await prisma.order.update({
 				where: {
