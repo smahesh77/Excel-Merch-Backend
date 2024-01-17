@@ -35,6 +35,8 @@ export async function getOrders(
 	}
 }
 
+
+// Update Stock when updating order status
 export async function getOrder(
 	req: Request,
 	res: Response,
@@ -78,22 +80,23 @@ export async function getOrder(
 		 * If the webhook failed to update the order status,
 		 * we update it here when user navigates to the order page
 		 */
-		if (
-			razorpayOrder.status === 'paid' &&
-			order.paymentStatus === PaymentStatus.payment_pending &&
-			order.orderStatus === OrderStatus.order_unconfirmed &&
-			order.shippingStatus === ShippingStatus.not_shipped
-		) {
-			await prisma.order.update({
-				where: {
-					orderId: orderId,
-				},
-				data: {
-					paymentStatus: PaymentStatus.payment_received,
-					orderStatus: OrderStatus.order_confirmed,
-				},
-			});
-		}
+		// TODO: Update Stock when updating order status
+		// if (
+		// 	razorpayOrder.status === 'paid' &&
+		// 	order.paymentStatus === PaymentStatus.payment_pending &&
+		// 	order.orderStatus === OrderStatus.order_unconfirmed &&
+		// 	order.shippingStatus === ShippingStatus.not_shipped
+		// ) {
+		// 	await prisma.order.update({
+		// 		where: {
+		// 			orderId: orderId,
+		// 		},
+		// 		data: {
+		// 			paymentStatus: PaymentStatus.payment_received,
+		// 			orderStatus: OrderStatus.order_confirmed,
+		// 		},
+		// 	});
+		// }
 
 		const razorpayPayments = (
 			await razorpay.orders.fetchPayments(razorpayOrderId)
