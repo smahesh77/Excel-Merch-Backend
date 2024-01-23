@@ -20,31 +20,35 @@ export async function updateProfileController(
 			where: { id: decodedUser.user_id },
 			update: {
 				phoneNumber,
-				address: {
-					update: {
-						...address,
-					},
-				},
 			},
 			create: {
 				id: decodedUser.user_id,
 				name: decodedUser.name,
 				email: decodedUser.email,
 				phoneNumber,
-				address: {
-					create: {
-						...address,
-					},
-				},
 			},
 
 			include: {
-				address: true
+				address: true,
 			},
 		});
 
-		res.json({
-			user: newUser,
+		const newAddress = await prisma.address.upsert({
+			where: { userId: newUser.id },
+			update: {
+				...address,
+			},
+			create: {
+				...address,
+				userId: newUser.id,
+			},
+		});
+
+		return res.json({
+			user: {
+				...newUser,
+				address: newAddress,
+			},
 		});
 	} catch (err) {
 		next(err);

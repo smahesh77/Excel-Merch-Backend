@@ -58,7 +58,7 @@ if(!process.env.RAZORPAY_WEBHOOK_SECRET) {
 
 export const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-if(!process.env.WITH_LOCAL_TUNNEL) {
+if(!process.env.WITH_LOCAL_TUNNEL || process.env.WITH_LOCAL_TUNNEL !== 'true') {
 	console.log('WITH_LOCAL_TUNNEL not set in env, defaulting to false');
 	console.log('This Means that the webhook will not work');
 }
