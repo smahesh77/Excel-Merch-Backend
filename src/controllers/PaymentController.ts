@@ -13,6 +13,8 @@ import { razorpay } from '../utils/razorpay';
 import { Payments } from 'razorpay/dist/types/payments';
 import { Refunds } from 'razorpay/dist/types/refunds';
 import { logger } from '../utils/logger';
+import { getOrderConfirmationHTML } from '../utils/mailTemplates';
+import { sendOrderConfirmationMail } from '../utils/mailer';
 
 enum CapturedEvents {
 	OrderPaid = 'order.paid',
@@ -195,6 +197,7 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 						item: true,
 					},
 				},
+				user: true,
 			},
 		});
 
@@ -252,6 +255,13 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 					merchOrderId,
 					razorpayOrderId,
 				});
+
+				sendOrderConfirmationMail(
+					order.user.name,
+					order.totalAmountInRs,
+					merchOrderId,
+					order.user.email
+				);
 
 				return {
 					message: 'Order confirmed',
@@ -440,7 +450,6 @@ async function refundFailed(reqPayload: IRefundFailedWebhookPayload): Promise<{
 		order.paymentStatus === PaymentStatus.payment_refund_initiated &&
 		order.orderStatus === OrderStatus.order_cancelled_insufficient_stock
 	) {
-		
 		logger.error('Refund failed', {
 			razOrderId,
 			orderId: order.orderId,
