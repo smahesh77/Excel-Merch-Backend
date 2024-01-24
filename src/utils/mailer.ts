@@ -33,7 +33,7 @@ class Mailer {
 		auth,
 		defaultFrom,
 	}: MailerOpts) {
-		this.defaultFrom = defaultFrom || 'noreply@excelmec.org';
+		this.defaultFrom = defaultFrom || 'Excel MEC <noreply@excelmec.org>';
 		if (pool) {
 			this.mailTransport = createTransport({
 				pool,
