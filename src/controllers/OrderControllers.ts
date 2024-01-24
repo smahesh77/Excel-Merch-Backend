@@ -35,7 +35,6 @@ export async function getOrders(
 	}
 }
 
-
 // Update Stock when updating order status
 export async function getOrder(
 	req: Request,
@@ -50,7 +49,7 @@ export async function getOrder(
 			throw new BadRequestError('Order ID not provided');
 		}
 
-		const order = await prisma.order.findFirst({
+		const order = await prisma.order.findUnique({
 			where: {
 				orderId: orderId,
 				userId: decodedUser.user_id,
@@ -65,6 +64,7 @@ export async function getOrder(
 						},
 					},
 				},
+				additionalCharges: true,
 			},
 		});
 
