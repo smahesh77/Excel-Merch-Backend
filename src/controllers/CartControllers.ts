@@ -91,6 +91,7 @@ export async function addItemToCart(
 		const item = await prisma.item.findUnique({
 			where: {
 				id: itemId,
+				deleted: false,
 			},
 			select: {
 				stockCount: {
@@ -293,6 +294,18 @@ ${userProfile.address?.city},
 ${userProfile.address?.state}
 ${userProfile.address?.zipcode}
 `;
+
+		/**
+		 * Check if any items were deleted by admin after user added them to cart
+		 */
+
+		for (const cartItem of userProfile.cartItems) {
+			if (cartItem.item.deleted) {
+				throw new BadRequestError(
+					`Item ${cartItem.item.name} was deleted after you added to cart. Please remove it from cart and try again`
+				);
+			}
+		}
 
 		const stockCounts = await prisma.stockCount.findMany({
 			where: {

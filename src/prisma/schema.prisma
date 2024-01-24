@@ -57,6 +57,9 @@ model Item {
   sizeOptions  Size[]
   colorOptions String[]
 
+  // Items once created can't be deleted as orders refer them
+  deleted Boolean @default(false)
+
   mediaObjects MediaObject[]
   stockCount   stockCount[]
 

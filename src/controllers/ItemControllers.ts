@@ -414,15 +414,18 @@ export async function deleteItemController(
 			throw new NotFoundError('Item not found');
 		}
 
-		await prisma.item.delete({
+		await prisma.item.update({
 			where: { id: itemId },
+			data: {
+				deleted: true,
+			},
 		});
 
-		await storageBucket.deleteFiles({
-			prefix: `${itemId}/`,
-		});
+		// await storageBucket.deleteFiles({
+		// 	prefix: `${itemId}/`,
+		// });
 
-		res.json({ message: 'Item deleted successfully' });
+		return res.json({ message: 'Item deleted successfully' });
 	} catch (err) {
 		next(err);
 	}
@@ -435,6 +438,9 @@ export async function getItemsController(
 ) {
 	try {
 		const items = await prisma.item.findMany({
+			where: {
+				deleted: false,
+			},
 			include: {
 				mediaObjects: {
 					orderBy: {
@@ -460,7 +466,7 @@ export async function getItemByIdController(
 
 	try {
 		const item = await prisma.item.findUnique({
-			where: { id: itemId },
+			where: { id: itemId, deleted: false },
 			include: {
 				mediaObjects: {
 					orderBy: {
