@@ -75,7 +75,10 @@ export async function getProfileController(
 			return res.status(404).json({ error: 'User Profile Not Created' });
 		}
 
-		res.status(200).json(user);
+		return res.status(200).json({
+			picture: decodedUser.picture,
+			...user
+		});
 	} catch (err) {
 		next(err);
 	}

@@ -38,3 +38,18 @@ export const errorHandler: ErrorRequestHandler = function (
 		return res.status(500).json({ error: 'Internal Server Error' });
 	}
 };
+
+export const jsonParseErrHandler: ErrorRequestHandler = function (
+	err,
+	req,
+	res,
+	next
+) {
+	// This check makes sure this is a JSON parsing issue, but it might be
+	// coming from any middleware, not just body-parser:
+	if (err instanceof SyntaxError && 'body' in err) {
+		throw new BadRequestError("Invalid JSON");
+	}
+
+	return next();
+};

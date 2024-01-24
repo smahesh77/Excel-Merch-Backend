@@ -5,13 +5,22 @@ import {
 	updateProfileController,
 } from '../../controllers/UserControllers';
 import { cartRouter } from './CartRoutes';
-import { cancelOrder, getOrder, getOrders } from '../../controllers/OrderControllers';
+import {
+	cancelOrder,
+	getOrder,
+	getOrders,
+} from '../../controllers/OrderControllers';
+import { updateProfileValidator } from '../../middleware/User/updateProfileValidator';
 
 export const userRouter = Router();
 
 userRouter.get('/profile', isAuthenticated, getProfileController);
-userRouter.post('/profile', isAuthenticated, updateProfileController);
-
+userRouter.post(
+	'/profile',
+	isAuthenticated,
+	updateProfileValidator,
+	updateProfileController
+);
 
 userRouter.use('/cart', cartRouter);
 
