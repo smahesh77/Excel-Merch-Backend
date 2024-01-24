@@ -12,6 +12,7 @@ import { PrismaClientUnknownRequestError } from '@prisma/client/runtime/library'
 import { razorpay } from '../utils/razorpay';
 import { Payments } from 'razorpay/dist/types/payments';
 import { Refunds } from 'razorpay/dist/types/refunds';
+import { logger } from '../utils/logger';
 
 enum CapturedEvents {
 	OrderPaid = 'order.paid',
@@ -106,8 +107,8 @@ export async function razorPayWebhook(
 	res: Response,
 	next: NextFunction
 ) {
-	console.log('Webhook called', {
-		headers: req.headers,
+	logger.info('Webhook called', {
+		headers: JSON.stringify(req.headers),
 		body: req.body,
 	});
 	try {
@@ -247,6 +248,11 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 					}),
 				]);
 
+				logger.notice(`Order confirmed ${merchOrderId}`, {
+					merchOrderId,
+					razorpayOrderId,
+				});
+
 				return {
 					message: 'Order confirmed',
 				};
@@ -255,7 +261,7 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 					err instanceof PrismaClientUnknownRequestError &&
 					err.message.includes('violates check constraint')
 				) {
-					console.error(
+					logger.notice(
 						`Stock ran out after payment for order ${merchOrderId}`
 					);
 					await prisma.order.update({
@@ -285,10 +291,10 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 							}
 						);
 					} catch (err) {
-						console.error('Refund failed', {
+						logger.error('Refund failed', {
 							merchOrderId,
 							razorpayOrderId,
-							reqPayload,
+							reqPayload: JSON.stringify(reqPayload),
 						});
 						await prisma.order.update({
 							where: {
@@ -299,8 +305,6 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 									PaymentStatus.payment_refund_failed,
 							},
 						});
-
-						// TODO: send email to admin
 					}
 					return {
 						message: 'Order cancelled due to insufficient stock',
@@ -313,12 +317,12 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 			order.orderStatus === OrderStatus.order_cancelled_by_user &&
 			order.paymentStatus === PaymentStatus.payment_pending
 		) {
-			console.error(
+			logger.alert(
 				`Recieved payment for cancelled order ${merchOrderId} for user ${order.userId}`,
 				{
 					merchOrderId,
 					razorpayOrderId,
-					reqPayload,
+					reqPayload: JSON.stringify(reqPayload),
 				}
 			);
 
@@ -338,19 +342,18 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 			order.orderStatus === OrderStatus.order_confirmed &&
 			order.paymentStatus === PaymentStatus.payment_received
 		) {
-			console.warn('Order already processed', {
+			logger.info('Order already processed', {
 				merchOrderId,
 				razorpayOrderId,
-				reqPayload,
 			});
 			return {
 				message: 'Order already processed',
 			};
 		} else {
-			console.error('Unexpected order status', {
+			logger.error('Unexpected order status', {
 				merchOrderId,
 				razorpayOrderId,
-				reqPayload,
+				reqPayload: JSON.stringify(reqPayload),
 			});
 			return {
 				message: 'Unexpected order status',
@@ -380,6 +383,9 @@ async function refundProcessed(
 	});
 
 	if (!order) {
+		logger.warn('Refund for unknown order', {
+			razOrderId,
+		});
 		throw new NotFoundError('Order not found');
 	}
 
@@ -400,9 +406,8 @@ async function refundProcessed(
 			message: 'Order Refund success',
 		};
 	} else {
-		// TODO: send email to admin
-		console.error('Unexpected refund', {
-			reqPayload,
+		logger.error('Unexpected refund', {
+			reqPayload: JSON.stringify(reqPayload),
 		});
 		throw new InternalServerError('Unexpected refund', {
 			reqPayload,
@@ -425,6 +430,9 @@ async function refundFailed(reqPayload: IRefundFailedWebhookPayload): Promise<{
 	});
 
 	if (!order) {
+		logger.warn('Refund for unknown order', {
+			razOrderId,
+		});
 		throw new NotFoundError('Order not found');
 	}
 
@@ -432,7 +440,13 @@ async function refundFailed(reqPayload: IRefundFailedWebhookPayload): Promise<{
 		order.paymentStatus === PaymentStatus.payment_refund_initiated &&
 		order.orderStatus === OrderStatus.order_cancelled_insufficient_stock
 	) {
-		// TODO: send email to admin
+		
+		logger.error('Refund failed', {
+			razOrderId,
+			orderId: order.orderId,
+			reqPayload: JSON.stringify(reqPayload),
+		});
+
 		await prisma.order.update({
 			where: {
 				orderId: order.orderId,
@@ -446,8 +460,8 @@ async function refundFailed(reqPayload: IRefundFailedWebhookPayload): Promise<{
 			message: 'Order Refund failed action required',
 		};
 	} else {
-		console.error('Unexpected refund', {
-			reqPayload,
+		logger.error('Unexpected refund', {
+			reqPayload: JSON.stringify(reqPayload),
 		});
 
 		return {

@@ -63,7 +63,7 @@ if (
 	process.env.WITH_LOCAL_TUNNEL !== 'true'
 ) {
 	console.log(`WITH_LOCAL_TUNNEL not set to 'true', defaulting to false`);
-	console.log('This Means that the webhook will not work');
+	console.log('This Means that the webhook will not work unless publically accessible');
 }
 
 export const WITH_LOCAL_TUNNEL = process.env.WITH_LOCAL_TUNNEL === 'true';

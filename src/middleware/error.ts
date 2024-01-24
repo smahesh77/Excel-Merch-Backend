@@ -6,6 +6,7 @@ import {
 	NotFoundError,
 	InternalServerError,
 } from '../utils/error';
+import { logger } from '../utils/logger';
 
 export const errorHandler: ErrorRequestHandler = function (
 	err,
@@ -22,18 +23,18 @@ export const errorHandler: ErrorRequestHandler = function (
 	else if (err instanceof NotFoundError)
 		return res.status(404).json({ error: err.message });
 	else if (err instanceof InternalServerError) {
-		console.error({
+		logger.error(err.message, {
 			message: err.message,
 			stack: err.stack,
-			err: err,
-			debug: err.debug,
+			err: JSON.stringify(err),
+			debug: JSON.stringify(err.debug),
 		});
 		return res.status(500).json({ error: err.message });
 	} else {
-		console.error({
+		logger.error(err.message, {
 			message: err.message,
 			stack: err.stack,
-			err: err,
+			err: JSON.stringify(err),
 		});
 		return res.status(500).json({ error: 'Internal Server Error' });
 	}

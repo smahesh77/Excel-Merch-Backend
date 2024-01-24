@@ -75,8 +75,18 @@ function customConsoleLogFormat() {
 	}
 }
 
-type keyValuePair = {
-	[key: string]: string | number | boolean | keyValuePair;
+export type keyValuePair = {
+	[key: string | number]:
+		| string
+		| string[]
+		| number
+		| number[]
+		| boolean
+		| boolean[]
+		| keyValuePair
+		| keyValuePair[]
+		| undefined
+		| null;
 };
 
 class Logger {

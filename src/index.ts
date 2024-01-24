@@ -52,7 +52,7 @@ app.use('*', () => {
 app.use(errorHandler);
 
 app.listen(PORT, async () => {
-	console.log(`Listening on port ${PORT}`);
+	logger.info(`Listening on port ${PORT}`);
 
 	if (WITH_LOCAL_TUNNEL) {
 		openLocalTunnel();
@@ -66,19 +66,19 @@ async function openLocalTunnel() {
 		const tunnel = await localtunnel(PORT, {
 			subdomain: 'excel-merch-dev-local',
 		});
-		console.log(`Local tunnel running at ${tunnel.url}`);
+		logger.info(`Local tunnel running at ${tunnel.url}`);
 
 		tunnel.on('error', function () {
-			console.log('Local tunnel error, reconnecting...');
+			logger.info('Local tunnel error, reconnecting...');
 			setTimeout(openLocalTunnel, reconnectionTimeout);
 		});
 
 		tunnel.on('close', function () {
-			console.log('Local tunnel close, reconnecting...');
+			logger.info('Local tunnel close, reconnecting...');
 			setTimeout(openLocalTunnel, reconnectionTimeout);
 		});
 	} catch (error) {
-		console.log('Local tunnel error, reconnecting...');
+		logger.info('Local tunnel error, reconnecting...');
 		setTimeout(openLocalTunnel, reconnectionTimeout);
 	}
 }
