@@ -23,7 +23,7 @@ class Mailer {
 		| Transporter<SMTPPool.SentMessageInfo>
 		| Transporter<SMTPTransport.SentMessageInfo>;
 	private defaultFrom: string;
-    private connectionVerified: boolean = false;
+	private connectionVerified: boolean = false;
 
 	constructor({
 		pool = true,
@@ -33,7 +33,6 @@ class Mailer {
 		auth,
 		defaultFrom,
 	}: MailerOpts) {
-
 		this.defaultFrom = defaultFrom || 'noreply@excelmec.org';
 		if (pool) {
 			this.mailTransport = createTransport({
@@ -58,73 +57,71 @@ class Mailer {
 			});
 		}
 
-        if(!auth.user || !auth.pass || !host || !port) {
-            logger.warn('Mailer not configured. Emails will not be sent.')
-            this.connectionVerified = false;
-            return;
-        }
+		if (!auth.user || !auth.pass || !host || !port) {
+			logger.warn('Mailer not configured. Emails will not be sent.');
+			this.connectionVerified = false;
+			return;
+		}
 
-        this.mailTransport.verify((err, success) => {
-            if (err) {
-                console.error(err);
-            } else {
-                this.connectionVerified = true;
-            }
-        });
+		this.mailTransport.verify((err, success) => {
+			if (err) {
+				console.error(err);
+			} else {
+				this.connectionVerified = true;
+			}
+		});
 	}
 
-    async sendMail(
-        to: string | string[],
-        subject: string,
-        html: string,
-        from?: string
-    ) {
-        if (!this.connectionVerified) {
-            return false;
-        }
+	async sendMail(
+		to: string | string[],
+		subject: string,
+		html: string,
+		from?: string
+	) {
+		if (!this.connectionVerified) {
+			return false;
+		}
 
-        const mailOpts = {
-            from: from || this.defaultFrom,
-            to,
-            subject,
-            html,
-        };
+		const mailOpts = {
+			from: from || this.defaultFrom,
+			to,
+			subject,
+			html,
+		};
 
-        return this.mailTransport.sendMail(mailOpts);
-    }
+		return this.mailTransport.sendMail(mailOpts);
+	}
 }
 
 export const mailer = new Mailer({
-    defaultFrom: 'noreply@excelmec.org',
-    pool: true,
-    port: SMTP_PORT,
-    secure: true,
-    host: SMTP_HOST,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
+	defaultFrom: 'noreply@excelmec.org',
+	pool: true,
+	port: SMTP_PORT,
+	secure: true,
+	host: SMTP_HOST,
+	auth: {
+		user: process.env.SMTP_USER,
+		pass: process.env.SMTP_PASS,
+	},
 });
 
-
 export async function sendOrderConfirmationMail(
-
 	userName: string,
 	totalAmt: number,
 	orderId: string,
-    userEmail: string,
+	userEmail: string
 ) {
-    const emailHtml = await getOrderConfirmationHTML(
-        userName,
-        totalAmt,
-        orderId
-    );
+	try {
+		const emailHtml = await getOrderConfirmationHTML(
+			userName,
+			totalAmt,
+			orderId
+		);
 
-    const emailSubject = `Order Confirmation`;
+		const emailSubject = `Order Confirmation`;
 
-    return mailer.sendMail(
-        userEmail,
-        emailSubject,
-        emailHtml
-    );
+		return mailer.sendMail(userEmail, emailSubject, emailHtml);
+	} catch (err) {
+		logger.error('Error while sending order confirmation mail');
+	}
 }
