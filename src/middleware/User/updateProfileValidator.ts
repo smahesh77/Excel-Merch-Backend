@@ -1,6 +1,5 @@
-import { body, validationResult } from 'express-validator';
+import { body } from 'express-validator';
 import { getValidator } from '../Validator';
-import { NextFunction, Request, Response } from 'express';
 
 const updateProfileValidators = [
     body('phoneNumber')

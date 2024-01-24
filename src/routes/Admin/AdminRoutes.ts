@@ -9,6 +9,7 @@ import {
 import { createItemValidator } from '../../middleware/Item/createItemValidator';
 import { updateItemValidator } from '../../middleware/Item/updateItemValidator';
 import { updateOrderStatus } from '../../controllers/AdminControllers';
+import { updateOrderStatusValidator } from '../../middleware/Admin/updateOrderStatusValidator';
 
 export const adminRouter = Router();
 
@@ -16,23 +17,24 @@ adminRouter.put(
 	'/orderStatus/:orderId',
 	isAuthenticated,
 	isMerchAdmin,
+	updateOrderStatusValidator,
 	updateOrderStatus
 );
 
 const storage = multer.memoryStorage();
-const upload = multer({ 
+const upload = multer({
 	storage: storage,
 	limits: {
 		fileSize: 1024 * 1024 * 50,
 		fieldSize: 1024 * 1024 * 30,
-	}
- });
+	},
+});
 
 const fieldConfig = [
 	{
 		name: 'media',
-		maxCount: 50
-	}
+		maxCount: 50,
+	},
 ];
 
 adminRouter.post(
@@ -44,7 +46,6 @@ adminRouter.post(
 	createNewItemController
 );
 
-// TODO: handle mediaChanges
 adminRouter.put(
 	'/item/:itemId',
 	isAuthenticated,

@@ -11,6 +11,7 @@ import {
 	getOrders,
 } from '../../controllers/OrderControllers';
 import { updateProfileValidator } from '../../middleware/User/updateProfileValidator';
+import { cancelOrderValidator } from '../../middleware/User/Order/cancelOrderValidator';
 
 export const userRouter = Router();
 
@@ -26,4 +27,9 @@ userRouter.use('/cart', cartRouter);
 
 userRouter.get('/orders', isAuthenticated, getOrders);
 userRouter.get('/orders/:orderId', isAuthenticated, getOrder);
-userRouter.post('/orders/:orderId/cancel', isAuthenticated, cancelOrder);
+userRouter.post(
+	'/orders/:orderId/cancel',
+	isAuthenticated,
+	cancelOrderValidator,
+	cancelOrder
+);

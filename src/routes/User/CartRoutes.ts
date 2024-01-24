@@ -7,12 +7,13 @@ import {
 	getUserCartItems,
 	removeItemFromCart,
 } from '../../controllers/CartControllers';
+import { addItemValidator } from '../../middleware/User/Cart/addItemValidator';
 
 export const cartRouter = Router();
 
 cartRouter.get('/', isAuthenticated, getUserCartItems);
 
-cartRouter.post('/', isAuthenticated, addItemToCart);
+cartRouter.post('/', isAuthenticated, addItemValidator, addItemToCart);
 
 cartRouter.delete('/', isAuthenticated, emptyCart);
 
