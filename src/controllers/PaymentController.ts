@@ -7,14 +7,16 @@ import {
 import { validateWebhookSignature } from 'razorpay/dist/utils/razorpay-utils';
 import { RAZORPAY_WEBHOOK_SECRET } from '../utils/env';
 import { prisma } from '../utils/prisma';
-import { OrderStatus, PaymentStatus, ShippingStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { PrismaClientUnknownRequestError } from '@prisma/client/runtime/library';
 import { razorpay } from '../utils/razorpay';
 import { Payments } from 'razorpay/dist/types/payments';
 import { Refunds } from 'razorpay/dist/types/refunds';
 import { logger } from '../utils/logger';
-import { getOrderConfirmationHTML } from '../utils/mailTemplates';
-import { sendOrderConfirmationMail, sendRefundConfirmationMail } from '../utils/mailer';
+import {
+	sendOrderConfirmationMail,
+	sendRefundConfirmationMail,
+} from '../utils/mailer';
 
 enum CapturedEvents {
 	OrderPaid = 'order.paid',
@@ -163,8 +165,26 @@ export async function razorPayWebhook(
 			default:
 				throw new InternalServerError('Unknown event');
 		}
-	} catch (err) {
-		next(err);
+	} catch (err: any) {
+		/**
+		 * If webhook does not respond with 200, razorpay will retry
+		 */
+		if (err instanceof InternalServerError) {
+			logger.error(err.message, {
+				message: err.message,
+				stack: err.stack,
+				err: JSON.stringify(err),
+				debug: JSON.stringify(err.debug),
+			});
+			return res.status(200).json({ error: err.message });
+		} else {
+			logger.error(err.message, {
+				message: err.message,
+				stack: err.stack,
+				err: JSON.stringify(err),
+			});
+			return res.status(200).json({ error: 'Internal Server Error' });
+		}
 	}
 }
 
@@ -179,11 +199,18 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 		const razorpayOrderId = reqPayload.payload.order.entity.id;
 
 		if (!merchOrderId || !razorpayOrderId) {
-			throw new InternalServerError('Invalid order', {
+			/**
+			 * Orders that happen in razorpay, such as payment pages etc will also
+			 * trigger this webhook. So, we need to ignore those.
+			 */
+			logger.info('Ignoring order', {
 				merchOrderId,
 				razorpayOrderId,
-				reqPayload,
+				reqPayload: JSON.stringify(reqPayload),
 			});
+			return {
+				message: 'Ignoring order',
+			};
 		}
 
 		const order = await prisma.order.findUnique({
@@ -391,8 +418,8 @@ async function refundProcessed(
 			razOrderId: razOrderId,
 		},
 		include: {
-			user: true
-		}
+			user: true,
+		},
 	});
 
 	if (!order) {
@@ -414,14 +441,34 @@ async function refundProcessed(
 				paymentStatus: PaymentStatus.payment_refunded,
 			},
 		});
-		
+
 		sendRefundConfirmationMail(
 			order.user.name,
 			order.totalAmountInRs,
 			order.orderId,
 			order.user.email
 		);
-		
+
+		return {
+			message: 'Order Refund success',
+		};
+	} else if (order.paymentStatus === PaymentStatus.payment_refund_failed) {
+		/**
+		 * This happens if refund failed initially and then was manually
+		 * refunded from razorpay dashboard.
+		 */
+		logger.notice('Refund success for previously failed refund', {
+			razOrderId,
+			orderId: order.orderId,
+		});
+
+		sendRefundConfirmationMail(
+			order.user.name,
+			order.totalAmountInRs,
+			order.orderId,
+			order.user.email
+		);
+
 		return {
 			message: 'Order Refund success',
 		};
