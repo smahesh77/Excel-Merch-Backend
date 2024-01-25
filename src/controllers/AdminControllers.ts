@@ -28,7 +28,7 @@ export async function updateOrderStatus(
 			where: { orderId: orderId },
 			include: {
 				user: true,
-			}
+			},
 		});
 
 		if (!order) {
@@ -48,7 +48,7 @@ export async function updateOrderStatus(
 				order.orderId,
 				order.user.email,
 				trackingId
-			)
+			);
 		}
 
 		const updatedOrder = await prisma.order.update({
@@ -62,6 +62,32 @@ export async function updateOrderStatus(
 		return res.status(200).json({
 			order: updatedOrder,
 			message: 'Order status updated successfully',
+		});
+	} catch (err) {
+		next(err);
+	}
+}
+
+export async function getAllOrders(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		const orders = await prisma.order.findMany({
+			where: {
+				orderStatus: 'order_confirmed',
+			},
+			include: {
+				orderItems: true,
+				user: true,
+				additionalCharges: true,
+			},
+		});
+
+		return res.status(200).json({
+			orders,
+			message: 'Orders fetched successfully',
 		});
 	} catch (err) {
 		next(err);

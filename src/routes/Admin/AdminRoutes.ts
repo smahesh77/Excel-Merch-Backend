@@ -8,7 +8,10 @@ import {
 } from '../../controllers/ItemControllers';
 import { createItemValidator } from '../../middleware/Item/createItemValidator';
 import { updateItemValidator } from '../../middleware/Item/updateItemValidator';
-import { updateOrderStatus } from '../../controllers/AdminControllers';
+import {
+	getAllOrders,
+	updateOrderStatus,
+} from '../../controllers/AdminControllers';
 import { updateOrderStatusValidator } from '../../middleware/Admin/updateOrderStatusValidator';
 
 export const adminRouter = Router();
@@ -61,3 +64,5 @@ adminRouter.delete(
 	isMerchAdmin,
 	deleteItemController
 );
+
+adminRouter.get('/orders', isAuthenticated, isMerchAdmin, getAllOrders);
