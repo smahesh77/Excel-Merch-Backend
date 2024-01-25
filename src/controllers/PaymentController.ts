@@ -442,6 +442,11 @@ async function refundProcessed(
 			},
 		});
 
+		logger.notice('Refund success', {
+			razOrderId,
+			orderId: order.orderId,
+		})
+
 		sendRefundConfirmationMail(
 			order.user.name,
 			order.totalAmountInRs,
