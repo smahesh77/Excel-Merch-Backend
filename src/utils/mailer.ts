@@ -63,13 +63,17 @@ class Mailer {
 			return;
 		}
 
-		this.mailTransport.verify((err, success) => {
-			if (err) {
-				console.error(err);
-			} else {
-				this.connectionVerified = true;
-			}
-		});
+		this.connectionVerified = true;
+		// Ignoring this as occasionally connections issues might occur
+		// and we can still attempt to send emails
+		// errors while sending emails should be handled separately
+		// this.mailTransport.verify((err, success) => {
+		// 	if (err) {
+		// 		console.error(err);
+		// 	} else {
+		// 		this.connectionVerified = true;
+		// 	}
+		// });
 	}
 
 	async sendMail(
