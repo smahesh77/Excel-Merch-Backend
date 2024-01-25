@@ -18,6 +18,9 @@ interface MailerOpts {
 	};
 }
 
+/**
+ * This is inteded to be used to send emails publicly to users
+ */
 class Mailer {
 	private mailTransport:
 		| Transporter<SMTPPool.SentMessageInfo>
@@ -98,7 +101,7 @@ class Mailer {
 }
 
 export const mailer = new Mailer({
-	defaultFrom: 'noreply@excelmec.org',
+	defaultFrom: 'Excel MEC <noreply@excelmec.org>',
 	pool: true,
 	port: SMTP_PORT,
 	secure: true,
