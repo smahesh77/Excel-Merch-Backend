@@ -3,7 +3,7 @@ import SMTPPool from 'nodemailer/lib/smtp-pool';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { SMTP_HOST, SMTP_PORT } from './env';
 import { logger } from './logger';
-import { getOrderConfirmationHTML } from './mailTemplates';
+import { getOrderConfirmationHTML, getRefundConfirmationHTML, getShippingStartedHTML } from './mailTemplates';
 
 interface MailerOpts {
 	defaultFrom: string;
@@ -123,5 +123,47 @@ export async function sendOrderConfirmationMail(
 		return mailer.sendMail(userEmail, emailSubject, emailHtml);
 	} catch (err) {
 		logger.error('Error while sending order confirmation mail');
+	}
+}
+
+export async function sendRefundConfirmationMail(
+	userName: string,
+	totalAmt: number,
+	orderId: string,
+	userEmail: string
+) {
+	try {
+		const emailHtml = await getRefundConfirmationHTML(
+			userName,
+			totalAmt,
+			orderId
+		);
+
+		const emailSubject = `Refund processed successfully`;
+
+		return mailer.sendMail(userEmail, emailSubject, emailHtml);
+	} catch (err) {
+		logger.error('Error while sending refund confirmation mail');
+	}
+}
+
+export async function sendShippingStartedMail(
+	userName: string,
+	orderId: string,
+	userEmail: string,
+	trackingId?: string
+) {
+	try {
+		const emailHtml = await getShippingStartedHTML(
+			userName,
+			orderId,
+			trackingId
+		);
+
+		const emailSubject = `Shipping Started`;
+
+		return mailer.sendMail(userEmail, emailSubject, emailHtml);
+	} catch (err) {
+		logger.error('Error while sending shipping started mail');
 	}
 }

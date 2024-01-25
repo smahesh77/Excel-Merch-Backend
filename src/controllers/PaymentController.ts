@@ -14,7 +14,7 @@ import { Payments } from 'razorpay/dist/types/payments';
 import { Refunds } from 'razorpay/dist/types/refunds';
 import { logger } from '../utils/logger';
 import { getOrderConfirmationHTML } from '../utils/mailTemplates';
-import { sendOrderConfirmationMail } from '../utils/mailer';
+import { sendOrderConfirmationMail, sendRefundConfirmationMail } from '../utils/mailer';
 
 enum CapturedEvents {
 	OrderPaid = 'order.paid',
@@ -390,6 +390,9 @@ async function refundProcessed(
 		where: {
 			razOrderId: razOrderId,
 		},
+		include: {
+			user: true
+		}
 	});
 
 	if (!order) {
@@ -411,7 +414,14 @@ async function refundProcessed(
 				paymentStatus: PaymentStatus.payment_refunded,
 			},
 		});
-		// TODO: send email to user
+		
+		sendRefundConfirmationMail(
+			order.user.name,
+			order.totalAmountInRs,
+			order.orderId,
+			order.user.email
+		);
+		
 		return {
 			message: 'Order Refund success',
 		};
