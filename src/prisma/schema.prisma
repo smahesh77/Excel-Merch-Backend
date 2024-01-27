@@ -1,0 +1,181 @@
+// This is the Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    Int    @id
+  name  String
+  email String @unique
+
+  phoneNumber String?
+  address     Address?
+
+  orders    Order[]
+  cartItems CartItem[]
+}
+
+model Address {
+  id   Int    @id @default(autoincrement())
+  city String
+
+  house   String
+  area    String
+  zipcode String
+  state   String
+
+  user   User @relation(fields: [userId], references: [id]) // 
+  userId Int  @unique
+}
+
+model CartItem {
+  itemId Int
+  item   Item @relation(fields: [itemId], references: [id])
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  quantity    Int
+  sizeOption  Size
+  colorOption String
+
+  @@id([itemId, userId])
+}
+
+model Item {
+  id           Int      @id @default(autoincrement())
+  name         String
+  description  String
+  price        Float
+  sizeOptions  Size[]
+  colorOptions String[]
+
+  // Items once created can't be deleted as orders refer them
+  deleted Boolean @default(false)
+
+  mediaObjects MediaObject[]
+  stockCount   stockCount[]
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+}
+
+enum Size {
+  S
+  M
+  L
+  XL
+  XXL
+}
+
+enum MediaTypes {
+  image
+  // video // TODO: add video support in future if needed
+}
+
+model stockCount {
+  itemId Int
+  item   Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  colorOption String
+  sizeOption  Size
+  count       Int
+
+  @@id([itemId, colorOption, sizeOption])
+}
+
+model MediaObject {
+  id String @id
+
+  type         MediaTypes
+  url          String
+  colorOption  String
+  viewOrdering Int
+
+  itemId Int
+  item   Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId, colorOption])
+}
+
+model Order {
+  orderId String @id
+  userId  Int
+  user    User @relation(fields: [userId], references: [id])
+  address String
+  razOrderId String
+  orderDate  DateTime    @default(now())
+  trackingId String?
+
+  orderStatus OrderStatus
+  paymentStatus PaymentStatus
+  shippingStatus ShippingStatus
+
+  totalAmountInRs Float
+  additionalCharges AdditionalOrderCharges[]
+
+  orderItems OrderItem[]
+}
+
+model AdditionalOrderCharges {
+  id Int @id @default(autoincrement())
+
+  orderId String
+  order   Order @relation(fields: [orderId], references: [orderId])
+
+  chargeType String
+  chargeAmountInRs Float
+}
+
+model OrderItem {
+  id Int @id @default(autoincrement())
+
+  sizeOption  Size
+  colorOption String
+  quantity    Int
+  price       Float
+
+  orderId String
+  order   Order @relation(fields: [orderId], references: [orderId])
+
+  itemId Int
+  item   Item @relation(fields: [itemId], references: [id])
+}
+
+// When checking out, we create a new order 
+// with status order_unconfirmed, payment_pending, not_shipped
+// When payment is received, we update 
+// the order status to order_confirmed, payment_received, not_shipped
+// If insufficient stock, we update the order status to order_cancelled_insufficient_stock
+// and initiate automatic refund
+// An Order in order_unconfirmed and payment_pending state can be cancelled by user
+
+enum OrderStatus {
+  order_unconfirmed
+  order_confirmed
+  order_cancelled_by_user
+  order_cancelled_insufficient_stock
+}
+
+enum PaymentStatus {
+  payment_pending
+  payment_received
+  
+  payment_refund_initiated
+  payment_refund_failed
+  payment_refunded
+}
+
+enum ShippingStatus {
+  not_shipped
+  processing
+  shipping
+  delivered
+}
