@@ -28,6 +28,10 @@ export const errorHandler: ErrorRequestHandler = function (
 			stack: err.stack,
 			err: JSON.stringify(err),
 			debug: JSON.stringify(err.debug),
+			reqBody: JSON.stringify(req?.body),
+			reqParams: JSON.stringify(req?.params),
+			reqQuery: JSON.stringify(req?.query),
+			reqHeaders: JSON.stringify(req?.headers),
 		});
 		return res.status(500).json({ error: err.message });
 	} else {
@@ -35,6 +39,10 @@ export const errorHandler: ErrorRequestHandler = function (
 			message: err.message,
 			stack: err.stack,
 			err: JSON.stringify(err),
+			reqBody: JSON.stringify(req?.body),
+			reqParams: JSON.stringify(req?.params),
+			reqQuery: JSON.stringify(req?.query),
+			reqHeaders: JSON.stringify(req?.headers),
 		});
 		return res.status(500).json({ error: 'Internal Server Error' });
 	}

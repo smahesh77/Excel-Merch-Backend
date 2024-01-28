@@ -175,6 +175,10 @@ export async function razorPayWebhook(
 				stack: err.stack,
 				err: JSON.stringify(err),
 				debug: JSON.stringify(err.debug),
+				reqBody: JSON.stringify(req?.body),
+				reqParams: JSON.stringify(req?.params),
+				reqQuery: JSON.stringify(req?.query),
+				reqHeaders: JSON.stringify(req?.headers),
 			});
 			return res.status(200).json({ error: err.message });
 		} else {
@@ -182,6 +186,10 @@ export async function razorPayWebhook(
 				message: err.message,
 				stack: err.stack,
 				err: JSON.stringify(err),
+				reqBody: JSON.stringify(req?.body),
+				reqParams: JSON.stringify(req?.params),
+				reqQuery: JSON.stringify(req?.query),
+				reqHeaders: JSON.stringify(req?.headers),
 			});
 			return res.status(200).json({ error: 'Internal Server Error' });
 		}
@@ -446,7 +454,7 @@ async function refundProcessed(
 		logger.notice('Refund success', {
 			razOrderId,
 			orderId: order.orderId,
-		})
+		});
 
 		sendRefundConfirmationMail(
 			order.user.name,
