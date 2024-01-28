@@ -322,6 +322,7 @@ async function orderPaid(reqPayload: IOrderPaidWebhookPayload): Promise<{
 									.amount,
 								speed: 'optimum',
 								receipt: merchOrderId,
+								reverse_all: 1,
 								notes: {
 									reason: 'stock ran out',
 								},
