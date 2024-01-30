@@ -55,6 +55,10 @@ export async function updateProfileController(
 	}
 }
 
+
+/**
+ * Creates a new user if one does not exist
+ */
 export async function getProfileController(
 	req: Request,
 	res: Response,
@@ -72,12 +76,28 @@ export async function getProfileController(
 		});
 
 		if (!user) {
-			return res.status(404).json({ error: 'User Profile Not Created' });
+			const newUser = await prisma.user.create({
+				data: {
+					id: decodedUser.user_id,
+					name: decodedUser.name,
+					email: decodedUser.email,
+				},
+				include: {
+					address: true,
+					cartItems: true,
+					orders: true,
+				},
+			});
+			return res.status(200).json({
+				message: 'User Profile created and returned',
+				picture: decodedUser.picture,
+				...newUser,
+			});
 		}
 
 		return res.status(200).json({
 			picture: decodedUser.picture,
-			...user
+			...user,
 		});
 	} catch (err) {
 		next(err);
