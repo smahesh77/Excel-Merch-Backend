@@ -31,6 +31,7 @@ async function setCorsPolicy() {
 			},
 		];
 		await storageBucket.setCorsConfiguration(corsConfiguration);
+		logger.info('CORS policy set. Maybe wait a few minutes for it to take effect');
 	} catch (err) {
 		logger.error('Error setting CORS policy', {
 			err: JSON.stringify(err),
