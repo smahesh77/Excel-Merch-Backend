@@ -26,6 +26,7 @@ export async function getOrders(
 						},
 					},
 				},
+				additionalCharges: true,
 			},
 		});
 
@@ -35,7 +36,6 @@ export async function getOrders(
 	}
 }
 
-// Update Stock when updating order status
 export async function getOrder(
 	req: Request,
 	res: Response,

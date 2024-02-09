@@ -8,11 +8,9 @@ import {
 	Size,
 } from '@prisma/client';
 import { BadRequestError, InternalServerError } from '../utils/error';
-import { PrismaClientUnknownRequestError } from '@prisma/client/runtime/library';
 import { getTransferAmountInRs, razorpay } from '../utils/razorpay';
 import {
 	DeliveryChargeInRs,
-	OrderAmtAboveWhichFreeDeliveryInRs,
 } from '../utils/constants';
 import { v4 as uuidv4 } from 'uuid';
 import { RAZORPAY_TRANSFER_ACC_ID } from '../utils/env';
@@ -253,7 +251,6 @@ export async function emptyCart(
 	}
 }
 
-// TODO: test if this works
 export async function checkoutController(
 	req: Request,
 	res: Response,
@@ -364,13 +361,16 @@ ${userProfile.address?.zipcode}
 		}
 
 		let totalAmountInRs = orderAmountInRs;
-		if (orderAmountInRs <= OrderAmtAboveWhichFreeDeliveryInRs) {
-			totalAmountInRs += DeliveryChargeInRs;
-			additionalCharges.push({
-				chargeType: 'Delivery Charge',
-				chargeAmountInRs: DeliveryChargeInRs,
-			});
-		}
+
+		// Flat fee for delivery
+		totalAmountInRs += DeliveryChargeInRs;
+		additionalCharges.push({
+			chargeType: 'Delivery Charge',
+			chargeAmountInRs: DeliveryChargeInRs,
+		});
+
+		// if (orderAmountInRs <= OrderAmtAboveWhichFreeDeliveryInRs) {
+		// }
 
 		try {
 			const transfers: Transfers.RazorpayTransferCreateRequestBody[] = [];
@@ -430,6 +430,7 @@ ${userProfile.address?.zipcode}
 
 				include: {
 					orderItems: true,
+					additionalCharges: true,
 				},
 			}),
 			prisma.cartItem.deleteMany({
