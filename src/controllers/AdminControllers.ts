@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../utils/prisma';
-import { NotFoundError } from '../utils/error';
+import { BadRequestError, NotFoundError } from '../utils/error';
 import { ShippingStatus } from '@prisma/client';
 import { sendShippingStartedMail } from '../utils/mailer';
 
@@ -33,6 +33,18 @@ export async function updateOrderStatus(
 
 		if (!order) {
 			throw new NotFoundError('Order not found');
+		}
+
+		/**
+		 * Only allow updating shipping status when order status is confirmed
+		 */
+		if (
+			order.orderStatus !== 'order_confirmed' ||
+			order.paymentStatus !== 'payment_received'
+		) {
+			throw new BadRequestError(
+				'Order status must be confirmed and payment must be received to update shipping status'
+			);
 		}
 
 		if (
