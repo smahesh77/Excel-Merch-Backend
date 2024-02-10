@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma';
 import { BadRequestError, NotFoundError } from '../utils/error';
 import { ShippingStatus } from '@prisma/client';
 import { sendShippingStartedMail } from '../utils/mailer';
+import { razorpay } from '../utils/razorpay';
 
 interface UpdateShippingStatusRequest {
 	shippingStatus: ShippingStatus;
@@ -100,6 +101,63 @@ export async function getAllOrders(
 		return res.status(200).json({
 			orders,
 			message: 'Orders fetched successfully',
+		});
+	} catch (err) {
+		next(err);
+	}
+}
+
+export async function getOrderAdmin(
+	req: Request,
+	res: Response,
+	next: NextFunction
+) {
+	try {
+		const orderId = req.params.orderId;
+
+		if (!orderId) {
+			throw new BadRequestError('Order ID not provided');
+		}
+
+		const order = await prisma.order.findUnique({
+			where: {
+				orderId: orderId,
+			},
+			include: {
+				orderItems: {
+					include: {
+						item: {
+							include: {
+								mediaObjects: true,
+							},
+						},
+					},
+				},
+				additionalCharges: true,
+				user: {
+					include: {
+						address: true,
+					},
+				},
+			},
+		});
+
+		if (!order) {
+			throw new NotFoundError('Order not found');
+		}
+
+		const razorpayOrderId = order.razOrderId;
+
+		const razorpayOrder = await razorpay.orders.fetch(razorpayOrderId);
+
+		const razorpayPayments = (
+			await razorpay.orders.fetchPayments(razorpayOrderId)
+		)?.items;
+
+		return res.status(200).json({
+			order,
+			razorpayOrder,
+			razorpayPayments,
 		});
 	} catch (err) {
 		next(err);

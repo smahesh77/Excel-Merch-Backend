@@ -77,6 +77,13 @@ export async function getOrder(
 		const razorpayOrder = await razorpay.orders.fetch(razorpayOrderId);
 
 		/**
+		 * UPDATE2: THIS SHOULD NOT BE NEEDED ANYMORE
+		 * Webhooks should update the order status
+		 * Enabling this can help in local development, 
+		 * if webhooks are not working
+		 * But this code has to be modified to update stock and check 
+		 * working with webhook logic
+		 * 
 		 * If the webhook failed to update the order status,
 		 * we update it here when user navigates to the order page
 		 */

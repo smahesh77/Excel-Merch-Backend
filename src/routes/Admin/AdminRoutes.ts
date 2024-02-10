@@ -10,6 +10,7 @@ import { createItemValidator } from '../../middleware/Item/createItemValidator';
 import { updateItemValidator } from '../../middleware/Item/updateItemValidator';
 import {
 	getAllOrders,
+	getOrderAdmin,
 	updateOrderStatus,
 } from '../../controllers/AdminControllers';
 import { updateOrderStatusValidator } from '../../middleware/Admin/updateOrderStatusValidator';
@@ -66,3 +67,9 @@ adminRouter.delete(
 );
 
 adminRouter.get('/orders', isAuthenticated, isMerchAdmin, getAllOrders);
+adminRouter.get(
+	'/orders/:orderId',
+	isAuthenticated,
+	isMerchAdmin,
+	getOrderAdmin
+);
