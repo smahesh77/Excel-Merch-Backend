@@ -8,6 +8,7 @@ import { WinstonMailTransport } from './winstonMailTransport';
 
 import {
 	NODE_ENV,
+	SMTP_CC_LIST,
 	SMTP_FROM,
 	SMTP_HOST,
 	SMTP_PASS,
@@ -113,6 +114,7 @@ class Logger {
 				new WinstonMailTransport({
 					from: SMTP_FROM,
 					to: SMTP_TO,
+					ccAddressess: SMTP_CC_LIST,
 					subject: '{{level}}: {{message}}',
 
 					/**

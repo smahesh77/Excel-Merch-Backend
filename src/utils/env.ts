@@ -63,7 +63,9 @@ if (
 	process.env.WITH_LOCAL_TUNNEL !== 'true'
 ) {
 	console.log(`WITH_LOCAL_TUNNEL not set to 'true', defaulting to false`);
-	console.log('This Means that the webhook will not work unless publically accessible');
+	console.log(
+		'This Means that the webhook will not work unless publically accessible'
+	);
 }
 
 export const WITH_LOCAL_TUNNEL = process.env.WITH_LOCAL_TUNNEL === 'true';
@@ -103,5 +105,10 @@ export const SMTP_PASS = process.env.SMTP_PASS;
 export const SMTP_HOST = process.env.SMTP_HOST;
 export const SMTP_FROM =
 	process.env.SMTP_FROM || 'Excel Merch <noreply@excelmec.org>';
-export const SMTP_TO = process.env.SMTP_TO || 'cstech@excelmec.org'
+export const SMTP_TO = process.env.SMTP_TO || 'cstech@excelmec.org';
 export const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465');
+if (!process.env.SMTP_CC_LIST) {
+	console.log('SMTP_CC_LIST not set in env, defaulting to empty array');
+}
+
+export const SMTP_CC_LIST = process.env.SMTP_CC_LIST?.split(',') || [];

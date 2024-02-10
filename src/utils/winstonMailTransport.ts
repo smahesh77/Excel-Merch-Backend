@@ -8,10 +8,11 @@ import { render } from 'mustache';
 interface WinstonMailTransportOpts {
 	to: string;
 	from: string;
+	ccAddressess?: string[];
 	subject: string;
 
 	level: string;
-    format: Format;
+	format: Format;
 
 	pool: boolean;
 	host: string;
@@ -36,10 +37,11 @@ export class WinstonMailTransport extends Transport {
 	constructor({
 		to,
 		from,
+		ccAddressess,
 		subject = '{{level}}: {{message}}',
 
 		level,
-        format,
+		format,
 
 		pool = true,
 		host,
@@ -49,16 +51,17 @@ export class WinstonMailTransport extends Transport {
 	}: WinstonMailTransportOpts) {
 		super({
 			level,
-            format
+			format,
 		});
 
 		this.transportOpts = {
 			to,
 			from,
+			ccAddressess,
 			subject,
 
 			level,
-            format,
+			format,
 
 			pool,
 			host,
@@ -120,6 +123,7 @@ export class WinstonMailTransport extends Transport {
 		await this.mailTransport.sendMail({
 			to: this.transportOpts.to,
 			from: this.transportOpts.from,
+			cc: this.transportOpts.ccAddressess,
 			subject: renderedSubject,
 			text: `${level}: ${message}\n\n${JSON.stringify(info, null, 2)}`,
 		});
