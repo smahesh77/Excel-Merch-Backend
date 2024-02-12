@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { isAuthenticated, isMerchAdmin } from '../../middleware/authMiddleware';
+import {
+	isAuthenticated,
+	isMerchAdmin,
+	isMerchOrderManager,
+} from '../../middleware/authMiddleware';
 import multer from 'multer';
 import {
 	createNewItemController,
@@ -20,7 +24,7 @@ export const adminRouter = Router();
 adminRouter.put(
 	'/orderStatus/:orderId',
 	isAuthenticated,
-	isMerchAdmin,
+	isMerchOrderManager,
 	updateOrderStatusValidator,
 	updateOrderStatus
 );
@@ -66,10 +70,10 @@ adminRouter.delete(
 	deleteItemController
 );
 
-adminRouter.get('/orders', isAuthenticated, isMerchAdmin, getAllOrders);
+adminRouter.get('/orders', isAuthenticated, isMerchOrderManager, getAllOrders);
 adminRouter.get(
 	'/orders/:orderId',
 	isAuthenticated,
-	isMerchAdmin,
+	isMerchOrderManager,
 	getOrderAdmin
 );
