@@ -64,7 +64,11 @@ export async function getShippingStartedHTML(
 	trackingId?: string
 ) {
 	const bodyTextRow1 = `<p style="font-size: 14px; line-height: 170%;">Your order with id ${orderId} has started shipping.</p>`;
-	const bodyTextRow2 = `<p style="font-size: 14px; line-height: 170%;">You can track the status on the website.</p>`;
+
+	/**
+	 * In 2023, Shipping was done via India Post
+	 */
+	const bodyTextRow2 = `<p style="font-size: 14px; line-height: 170%;">You can track the status on the <a href="https://www.indiapost.gov.in/_layouts/15/DOP.Portal.Tracking/TrackConsignment.aspx">India Post Tracking Website. </a> </p>`;
 	const bodyTextRow3 = trackingId
 		? `<p style="font-size: 14px; line-height: 170%;">Tracking ID: ${trackingId}</p>`
 		: '';
